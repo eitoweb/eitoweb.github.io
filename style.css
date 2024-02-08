@@ -7,6 +7,9 @@ nav{
   margin:0;
   padding:0;
 }
+.image{
+  text-align:center;
+}
 .fadeIn{
 animation-name:fadeInAnime;
 animation-duration:1s;
