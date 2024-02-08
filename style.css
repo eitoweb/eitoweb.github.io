@@ -4,5 +4,6 @@ header{
 }
 nav{
   text-align:center;
-  font-size:30px;
+  width:30px;
+  padding:3px;
 }
