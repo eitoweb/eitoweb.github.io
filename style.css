@@ -10,6 +10,8 @@ nav{
 .image{
   display:block;
   margin:auto;
+  max-width:100%;
+  height:auto;
 }
 .fadeIn{
 animation-name:fadeInAnime;
