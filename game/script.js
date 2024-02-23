@@ -70,7 +70,6 @@ window.onload = function () {
 			//ポイントによって状態Stateを変更する
 			if (point < 3) {
 				state = 1;
-				loop = 1;
 			} else if (point < 6) {
 				state = 2;
 			} else if (point < 9) {
