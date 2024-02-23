@@ -80,6 +80,8 @@ window.onload = function () {
 				state = 5;
 			} else if (point < 18) {
 				state = 1;
+				zoyamaImg.x = -200;						//ぞう山のｘ座標を指定
+				zoyamaImg.y = 100;						//ぞう山のy座標を指定
 			} else if (point < 21) {
 				state = 2;
 			} else if (point < 24) {
@@ -90,6 +92,8 @@ window.onload = function () {
 				state = 5;
 			} else if (point < 33) {
 				state = 1;
+				zoyamaImg.x = -200;						//ぞう山のｘ座標を指定
+				zoyamaImg.y = 100;						//ぞう山のy座標を指定
 			} else if (point < 36) {
 				state = 2;
 			} else if (point < 39) {
@@ -100,6 +104,8 @@ window.onload = function () {
 				state = 5;
 			} else if (point < 48) {
 				state = 1;
+				zoyamaImg.x = -200;						//ぞう山のｘ座標を指定
+				zoyamaImg.y = 100;						//ぞう山のy座標を指定
 			} else if (point < 51) {
 				state = 2;
 			} else if (point < 54) {
