@@ -34,6 +34,7 @@ window.onload = function () {
 
 		let point = 0;									//ポイント
 		let state = 0;								//現在のゲーム状態
+		let loop = 0;
 
 		//グローバル変数終わり
 		/////////////////////////////////////////////////
@@ -70,14 +71,19 @@ window.onload = function () {
 			//ポイントによって状態Stateを変更する
 			if (point < 3) {
 				state = 1;
+				loop = 1;
 			} else if (point < 6) {
 				state = 2;
 			} else if (point < 9) {
 				state = 3;
 			} else if (point < 12) {
 				state = 4;
-			} else {
+			} else if (point < 15) {
 				state = 5;
+			} else
+				point = 1;
+				state = 1;
+				loop = loop + 1;
 			}
 
 		};
