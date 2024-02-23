@@ -86,7 +86,7 @@ window.onload = function () {
 				state = 3;
 			} else if (point < 27) {
 				state = 4;
-			} else if
+			} else {
 				state = 5;
 			}
 
