@@ -86,6 +86,26 @@ window.onload = function () {
 				state = 3;
 			} else if (point < 27) {
 				state = 4;
+			} else if (point < 30) {
+				state = 5;
+			} else if (point < 33) {
+				state = 1;
+			} else if (point < 36) {
+				state = 2;
+			} else if (point < 39) {
+				state = 3;
+			} else if (point < 42) {
+				state = 4;
+			} else if (point < 45) {
+				state = 5;
+			} else if (point < 48) {
+				state = 1;
+			} else if (point < 51) {
+				state = 2;
+			} else if (point < 54) {
+				state = 3;
+			} else if (point < 57) {
+				state = 4;
 			} else {
 				state = 5;
 			}
@@ -123,8 +143,6 @@ window.onload = function () {
 			if (state == 5) {							//状態５（point１２以上から）　 ｙ軸が毎フレーム毎に変化する
 				zoyamaImg.x += 20;						//移動します。
 				zoyamaImg.y = Math.random() * 400;			//ｙ座標の位置を枚フレーム毎にランダム決定
-				zoyamaImg.x = -200;						//ぞう山のｘ座標を指定
-				zoyamaImg.y = 100;						//ぞう山のy座標を指定
 			}
 
 			//現在のテキスト表示
