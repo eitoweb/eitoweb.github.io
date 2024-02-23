@@ -123,6 +123,8 @@ window.onload = function () {
 			if (state == 5) {							//状態５（point１２以上から）　 ｙ軸が毎フレーム毎に変化する
 				zoyamaImg.x += 20;						//移動します。
 				zoyamaImg.y = Math.random() * 400;			//ｙ座標の位置を枚フレーム毎にランダム決定
+				zoyamaImg.x = -200;						//ぞう山のｘ座標を指定
+				zoyamaImg.y = 100;						//ぞう山のy座標を指定
 			}
 
 			//現在のテキスト表示
