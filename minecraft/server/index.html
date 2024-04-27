@@ -12,9 +12,23 @@
 
   <header>
    <p>マインクラフトサーバー</p>
+   <hr>
   </header>
     
   <nav>
+    <p><span id="real-time"></span>現在、すべてのサービスが正常に稼働しています</p>
+
+  <script type="text/javascript">
+function Time() {
+   var realTime = new Date();
+   var hour = realTime.getHours();
+   var minutes  = realTime.getMinutes();
+   var seconds  = realTime.getSeconds();
+   var text = hour + ":" + minutes + ":" + seconds;
+   document.getElementById("real-time").innerHTML = text;
+}
+setInterval('Time()',1000);
+  </script>
     <hr>
     <p>🟢</p>
     <p>統合版サーバー</p>
