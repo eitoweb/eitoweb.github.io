@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>将棋 AI & 1vs1</title>
+    <title>将棋 AI & 1vs1 - iPad対応版</title>
     <style>
         :root {
             --board-color: #e3c878;
@@ -54,7 +54,7 @@
         .option-group label { color: #e3c878; font-size: 0.9rem; margin-bottom: 5px; display: block; }
         select { width: 100%; padding: 12px; background: #fdf5e6; border-radius: 6px; font-size: 1rem; color: #3e2723; }
 
-        /* ステータスバー（P1/P2用） */
+        /* ステータスバー（P1/P2/AI用） */
         .status-bar {
             font-size: 1.2rem; color: #e3c878; font-weight: bold; height: 35px; 
             display: flex; align-items: center; justify-content: center; width: 100%;
@@ -212,7 +212,7 @@
             document.getElementById('game-screen').classList.add('active');
             
             initGame();
-            modal.show("対局開始", is1vs1 ? "1vs1モード：交互に操作してください" : `対AI：${levels[currentLevel-1]}`, [
+            modal.show("対局開始", is1vs1 ? "1vs1モード：交互に操作してください" : `AI難易度：${levels[currentLevel-1]}`, [
                 { label: "開始", class: "btn-yes", action: () => { if(!isTurnP1 && !is1vs1) setTimeout(aiRoutine, 600); } }
             ]);
         }
@@ -232,12 +232,24 @@
             const p1El = document.getElementById('status-p1');
             const p2El = document.getElementById('status-p2');
             
-            if (isTurnP1) {
-                p1El.textContent = "プレイヤー1 の手番です";
-                p2El.textContent = "相手の手番です";
+            if (is1vs1) {
+                // 1vs1モード：両サイド考慮
+                if (isTurnP1) {
+                    p1El.textContent = "プレイヤー1 の手番です";
+                    p2El.textContent = "相手の手番です";
+                } else {
+                    p1El.textContent = "相手の手番です";
+                    p2El.textContent = "プレイヤー2 の手番です";
+                }
             } else {
-                p1El.textContent = "相手の手番です";
-                p2El.textContent = is1vs1 ? "プレイヤー2 の手番です" : "AI 思考中...";
+                // AI対局：プレイヤー側の視点のみ
+                if (isTurnP1) {
+                    p1El.textContent = "あなたの手番です";
+                    p2El.textContent = ""; // AI側は非表示
+                } else {
+                    p1El.textContent = "AI思考中...";
+                    p2El.textContent = "";
+                }
             }
         }
 
@@ -346,7 +358,6 @@
             if (!isTurnP1 && !is1vs1) setTimeout(aiRoutine, 600);
         }
 
-        // 基本ロジック（将棋のルール）
         function isCheck(b, isP) {
             let kr = -1, kc = -1, targetK = isP ? 'K' : 'k';
             for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (b[r][c] === targetK) { kr = r; kc = c; break; }
