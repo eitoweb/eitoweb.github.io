@@ -211,7 +211,7 @@
             document.getElementById('game-screen').classList.add('active');
             
             initGame();
-            modal.show("対局開始", is1vs1 ? "1vs1モード：交互に操作してください" : `AI難易度：${levels[currentLevel-1]}`, [
+            modal.show("対局開始", is1vs1 ? "1vs1モード：交互に操作してください" : `AIモード：${levels[currentLevel-1]}`, [
                 { label: "開始", class: "btn-yes", action: () => { if(!isTurnP1 && !is1vs1) setTimeout(aiRoutine, 600); } }
             ]);
         }
@@ -349,7 +349,10 @@
                 isTurnP1 ? handP1.push(captured) : handP2.push(captured);
                 if(target.toUpperCase() === 'K') {
                     board[tr][tc] = (promote ? p+"+" : p); board[fr][fc] = ' ';
-                    render(); endGame(isTurnP1 ? "プレイヤー1 の勝ち！" : "プレイヤー2 の勝ち！"); return;
+                    render();
+                    const winner = isTurnP1 ? "プレイヤー1" : (is1vs1 ? "プレイヤー2" : "AI");
+                    endGame(`${winner} の勝ち！`);
+                    return;
                 }
             }
             if (promote) p += "+";
@@ -363,7 +366,8 @@
             if (isCheck(board, isTurnP1)) {
                 if (isCheckmate(board, isTurnP1)) { 
                     render();
-                    endGame(isTurnP1 ? "プレイヤー2 の勝利（詰み）" : "プレイヤー1 の勝利（詰み）"); 
+                    const winner = isTurnP1 ? (is1vs1 ? "プレイヤー2" : "AI") : "プレイヤー1";
+                    endGame(`${winner} の勝利（詰み）`); 
                     return; 
                 }
                 showOteNotification();
@@ -530,7 +534,7 @@
             
             let csvContent = "手数,手番,駒,移動元,移動先,成り\n";
             kifuHistory.forEach((h, index) => {
-                const turnName = h.turn === 1 ? "先手(P1)" : "後手(P2/AI)";
+                const turnName = h.turn === 1 ? "先手(P1)" : (is1vs1 ? "後手(P2)" : "AI");
                 csvContent += `${index + 1},${turnName},${h.piece},${h.from},${h.to},${h.promote}\n`;
             });
 
