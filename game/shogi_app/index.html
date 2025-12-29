@@ -22,12 +22,10 @@
             min-height: 100vh; overflow: hidden; touch-action: manipulation;
         }
 
-        /* スクリーン管理 */
         .screen { display: none; flex-direction: column; align-items: center; width: 100%; animation: fadeIn 0.5s; }
         .screen.active { display: flex; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* タイトル画面 UI */
         .menu-card {
             background: linear-gradient(145deg, #3d2b27, #2b1d1a);
             padding: 40px; border-radius: 24px; text-align: center;
@@ -48,9 +46,7 @@
             border: none; border-radius: 12px; font-size: 1.2rem; font-weight: 900;
             cursor: pointer; transition: transform 0.2s, background 0.2s; margin-top: 10px;
         }
-        .start-btn:active { transform: scale(0.98); background: #cbb165; }
 
-        /* ゲーム画面 */
         .status-bar { font-size: 1.1rem; color: var(--accent); font-weight: bold; height: 40px; display: flex; align-items: center; transition: all 0.3s; }
         #status-p2 { transform: rotate(180deg); }
         .active-turn { text-shadow: 0 0 10px var(--accent); color: white; scale: 1.1; }
@@ -62,7 +58,6 @@
         #board { display: grid; grid-template-columns: repeat(9, 62px); grid-template-rows: repeat(9, 64px); gap: 1px; background: #5d4037; }
         .sq { width: 62px; height: 64px; background-color: var(--board-color); display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; }
 
-        /* 駒のデザイン調整 */
         .piece {
             background: var(--piece-bg); color: var(--piece-text); display: flex; justify-content: center; align-items: center;
             font-family: "Yu Mincho", "serif"; font-weight: 900; clip-path: polygon(50% 0%, 93% 18%, 100% 100%, 0% 100%, 7% 18%);
@@ -71,18 +66,15 @@
         .piece.p2-side { transform: rotate(180deg); }
         .piece.promoted { color: var(--promoted-text); }
         
-        /* 駒のサイズ分け */
         .p-K { width: 56px; height: 61px; font-size: 40px; }
         .p-R, .p-B { width: 53px; height: 58px; font-size: 36px; }
         .p-G, .p-S { width: 50px; height: 55px; font-size: 34px; }
         .p-N, .p-L { width: 46px; height: 51px; font-size: 30px; }
         .p-P { width: 42px; height: 46px; font-size: 26px; }
 
-        /* マス目強調 */
         .sq.selected::after { content: ""; position: absolute; inset: 2px; border: 3px solid #ffeb3b; border-radius: 4px; z-index: 3; pointer-events: none; }
-        .sq.last-move::after { content: ""; position: absolute; inset: 0; background: rgba(255, 87, 34, 0.3); z-index: 1; pointer-events: none; }
+        .sq.last-move::after { content: ""; position: absolute; inset: 0; background: rgba(255, 87, 34, 0.4); z-index: 1; pointer-events: none; }
 
-        /* 持ち駒 */
         .hand-box {
             background: rgba(0,0,0,0.2); border-radius: 8px; width: 558px; min-height: 55px;
             display: flex; align-items: center; gap: 8px; padding: 4px 12px; margin: 8px 0;
@@ -96,7 +88,6 @@
         .hand-piece.selected { outline: 3px solid #ffeb3b; box-shadow: 0 0 15px #ffeb3b; }
         .badge { position: absolute; bottom: -5px; right: -5px; background: #d32f2f; color: white; font-size: 10px; min-width: 14px; border-radius: 10px; text-align: center; border: 1px solid white; }
 
-        /* モーダル */
         #modal-overlay {
             position: fixed; inset: 0; background: var(--overlay); display: none;
             justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px);
@@ -132,7 +123,6 @@
     <div id="home-screen" class="screen active">
         <div class="menu-card">
             <h1>将棋 Premium</h1>
-            
             <div class="option-group">
                 <label class="switch-container">
                     <span>1vs1 モード (対面対戦)</span>
@@ -142,12 +132,10 @@
                     </div>
                 </label>
             </div>
-
             <div id="ai-level-group" class="option-group">
                 <label>AI 難易度</label>
                 <select id="ai-level"></select>
             </div>
-
             <div class="option-group">
                 <label>先手選択</label>
                 <select id="first-move">
@@ -156,7 +144,6 @@
                     <option value="random">ランダム</option>
                 </select>
             </div>
-
             <button class="start-btn" onclick="startGame()">対局開始</button>
         </div>
     </div>
@@ -164,12 +151,9 @@
     <div id="game-screen" class="screen">
         <div id="status-p2" class="status-bar"></div>
         <div class="hand-box" id="hand-p2-container" style="transform: rotate(180deg);"><div id="hand-p2" style="display:flex; gap:6px;"></div></div>
-        
         <div id="board-container"><div id="board"></div></div>
-        
         <div class="hand-box" id="hand-p1-container"><div id="hand-p1" style="display:flex; gap:6px;"></div></div>
         <div id="status-p1" class="status-bar"></div>
-
         <div style="margin-top:20px; display:flex; gap:15px;">
             <button onclick="downloadKifu()" style="background:#444; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">棋譜DL</button>
             <button onclick="location.reload()" style="background:#3e2723; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">終了</button>
@@ -189,7 +173,6 @@
         let board = [], handP1 = [], handP2 = [], kifu = [];
         let isTurnP1 = true, isGameOver = false, selected = null, is1vs1 = false, level = 20, lastMove = null;
 
-        // AI 20段階生成
         const lvSelect = document.getElementById('ai-level');
         const lvNames = ["10級","9級","8級","7級","6級","5級","4級","3級","2級","1級","初段","二段","三段","四段","五段","六段","七段","八段","九段","十段"];
         lvNames.forEach((n, i) => {
@@ -208,7 +191,6 @@
             level = parseInt(lvSelect.value);
             const first = document.getElementById('first-move').value;
             isTurnP1 = first === 'p1' ? true : (first === 'p2' ? false : Math.random() < 0.5);
-            
             initGame();
             document.getElementById('home-screen').classList.remove('active');
             document.getElementById('game-screen').classList.add('active');
@@ -228,13 +210,8 @@
                 for(let c=0; c<9; c++) {
                     const sq = document.createElement('div');
                     sq.className = 'sq';
-                    // 選択枠(黄色)と移動先(オレンジ)の共存
                     if(selected?.type === 'board' && selected?.r === r && selected?.c === c) sq.classList.add('selected');
-                    if(lastMove?.tr === r && lastMove?.tc === c) {
-                        sq.classList.add('last-move');
-                        // 動かした駒のセルにも黄色の枠を適用
-                        sq.classList.add('selected');
-                    }
+                    if(lastMove?.tr === r && lastMove?.tc === c) sq.classList.add('last-move');
                     
                     const p = board[r][c];
                     if(p !== ' ') {
@@ -277,27 +254,30 @@
                         const isPromotable = !movePiece.includes('+') && "PSNLBR".includes(movePiece.toUpperCase()) && (isTurnP1 ? r <= 2 || fr <= 2 : r >= 6 || fr >= 6);
                         const forcePromote = (movePiece.toUpperCase()==='P' || movePiece.toUpperCase()==='L') && (isTurnP1 ? r===0 : r===8) || (movePiece.toUpperCase()==='N' && (isTurnP1 ? r<=1 : r>=7));
                         
+                        // 移動処理に入る前に選択枠をクリア
+                        const currentFr = fr, currentFc = fc, currentTr = r, currentTc = c;
+                        selected = null; 
+
                         if(forcePromote) {
-                            executeMove(fr, fc, r, c, true);
+                            executeMove(currentFr, currentFc, currentTr, currentTc, true);
                         } else if(isPromotable) {
-                            // 選択解除してからモーダルを出すことでUIの混乱を防ぐ
-                            const currentFr = fr, currentFc = fc, currentTr = r, currentTc = c;
                             showModal("成り", "成りますか？", [
                                 { label: "成る", class: "btn-confirm", action: () => executeMove(currentFr, currentFc, currentTr, currentTc, true) },
                                 { label: "成らない", class: "btn-cancel", action: () => executeMove(currentFr, currentFc, currentTr, currentTc, false) }
                             ]);
                         } else {
-                            executeMove(fr, fc, r, c, false);
+                            executeMove(currentFr, currentFc, currentTr, currentTc, false);
                         }
-                        selected = null; return;
+                        return;
                     }
                 } else if(selected.type === 'hand') {
                     if(canDrop(selected.piece, r, c, isTurnP1, board)) {
                         board[r][c] = isTurnP1 ? selected.piece : selected.piece.toLowerCase();
                         const h = isTurnP1 ? handP1 : handP2; h.splice(h.indexOf(selected.piece), 1);
                         kifu.push(`打${9-c}${r+1}${PIECE_DATA[selected.piece].name}`);
+                        selected = null;
                         endTurn(r, c);
-                        selected = null; return;
+                        return;
                     }
                 }
                 selected = null; render();
@@ -461,13 +441,11 @@
                 const btn = document.createElement('button');
                 btn.className = `modal-btn ${b.class}`;
                 btn.textContent = b.label;
-                // タッチ・クリック両方で確実に一度だけ実行
-                const handler = (e) => {
+                btn.onclick = (e) => {
                     e.preventDefault(); e.stopPropagation();
                     b.action(); 
                     over.style.display = 'none';
                 };
-                btn.onclick = handler;
                 container.appendChild(btn);
             });
             over.style.display = 'flex';
