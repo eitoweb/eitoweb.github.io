@@ -87,11 +87,11 @@
         }
         .hand-piece.selected { outline: 3px solid #ffeb3b; box-shadow: 0 0 15px #ffeb3b; }
         .badge { 
-            position: absolute; top: -5px; right: -5px;
+            position: absolute; top: 0; right: 0; transform: translate(40%, -40%);
             background: #d32f2f; color: white; 
-            font-size: 12px; min-width: 20px; height: 20px; border-radius: 10px;
+            font-size: 13px; min-width: 20px; height: 20px; border-radius: 10px;
             display: flex; align-items: center; justify-content: center;
-            border: 2px solid #fff; font-weight: 900; pointer-events: none; z-index: 10;
+            border: 2px solid #fff; font-weight: 900; pointer-events: none; z-index: 100;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
@@ -108,6 +108,12 @@
         .btn-confirm { background: #5d4037; color: white; }
         .btn-cancel { background: #ccc; color: #333; }
 
+        .switch-container { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+        .switch { position: relative; width: 50px; height: 26px; background: #555; border-radius: 13px; transition: 0.3s; }
+        .switch::after { content: ""; position: absolute; width: 22px; height: 22px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: 0.3s; }
+        input:checked + .switch { background: var(--accent); }
+        input:checked + .switch::after { left: 26px; }
+
         #ote-notification {
             position: fixed; top: 50%; left: 50%; 
             transform: translate(-50%, -50%);
@@ -121,23 +127,47 @@
 <body>
 
     <div id="ote-notification">王手！</div>
-    <div id="modal-overlay"><div class="modal-content"><h2 id="modal-title">確認</h2><p id="modal-body"></p><div class="modal-btns" id="modal-btns"></div></div></div>
+
+    <div id="modal-overlay">
+        <div class="modal-content">
+            <h2 id="modal-title" style="margin-top:0;">確認</h2>
+            <p id="modal-body"></p>
+            <div class="modal-btns" id="modal-btns"></div>
+        </div>
+    </div>
 
     <div id="home-screen" class="screen active">
         <div class="menu-card">
             <h1>将棋 Premium</h1>
             <div class="option-group">
-                <label class="switch-container"><span>1vs1 モード</span><input type="checkbox" id="mode-1vs1" style="display:none;" onchange="toggleAILevelUI()"><div class="switch"></div></label>
+                <label class="switch-container">
+                    <span>1vs1 モード (対面対戦)</span>
+                    <div style="position:relative;">
+                        <input type="checkbox" id="mode-1vs1" style="display:none;" onchange="toggleAILevelUI()">
+                        <div class="switch"></div>
+                    </div>
+                </label>
             </div>
-            <div id="ai-level-group" class="option-group"><label>AI 難易度</label><select id="ai-level"></select></div>
-            <div id="ai-style-group" class="option-group"><label>AI 戦型</label>
+            <div id="ai-level-group" class="option-group">
+                <label>AI 難易度</label>
+                <select id="ai-level"></select>
+            </div>
+            <div id="ai-style-group" class="option-group">
+                <label>AI 戦型</label>
                 <select id="ai-style">
-                    <option value="balance">バランス</option>
-                    <option value="ibisha">居飛車</option>
-                    <option value="furibisha">振り飛車</option>
+                    <option value="balance">バランス（標準）</option>
+                    <option value="ibisha">居飛車（正攻法）</option>
+                    <option value="furibisha">振り飛車（カウンター）</option>
                 </select>
             </div>
-            <div class="option-group"><label>先手選択</label><select id="first-move"><option value="p1">プレイヤー1</option><option value="p2">AI/P2</option></select></div>
+            <div class="option-group">
+                <label>先手選択</label>
+                <select id="first-move">
+                    <option value="p1">プレイヤー1 (下側)</option>
+                    <option value="p2">プレイヤー2 / AI (上側)</option>
+                    <option value="random">ランダム</option>
+                </select>
+            </div>
             <button class="start-btn" onclick="startGame()">対局開始</button>
         </div>
     </div>
@@ -148,43 +178,94 @@
         <div id="board-container"><div id="board"></div></div>
         <div class="hand-box" id="hand-p1-container"><div id="hand-p1" style="display:flex; gap:16px;"></div></div>
         <div id="status-p1" class="status-bar"></div>
-        <div style="margin-top:20px; display:flex; gap:15px;"><button onclick="downloadKifu()" style="background:#444; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer;">棋譜DL</button><button onclick="location.reload()" style="background:#3e2723; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer;">終了</button></div>
+        <div style="margin-top:20px; display:flex; gap:15px;">
+            <button onclick="downloadKifu()" style="background:#444; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">棋譜DL</button>
+            <button onclick="location.reload()" style="background:#3e2723; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">終了</button>
+        </div>
     </div>
 
     <script>
-        const PIECE_DATA = { 'K': {name:'王', size:'p-K'}, 'R': {name:'飛', size:'p-R'}, 'B': {name:'角', size:'p-B'}, 'G': {name:'金', size:'p-G'}, 'S': {name:'銀', size:'p-S'}, 'N': {name:'桂', size:'p-N'}, 'L': {name:'香', size:'p-L'}, 'P': {name:'歩', size:'p-P'}, 'R+': {name:'龍', size:'p-R'}, 'B+': {name:'馬', size:'p-B'}, 'S+': {name:'全', size:'p-S'}, 'N+': {name:'圭', size:'p-N'}, 'L+': {name:'杏', size:'p-L'}, 'P+': {name:'と', size:'p-P'} };
-        const SCORES = { 'K':90000, 'R':1000, 'B':900, 'G':600, 'S':500, 'N':400, 'L':300, 'P':100, 'R+':1500, 'B+':1300, 'S+':700, 'N+':700, 'L+':700, 'P+':700 };
-        let board = [], handP1 = [], handP2 = [], kifu = [], isTurnP1 = true, isGameOver = false, selected = null, is1vs1 = false, level = 20, aiStyle = 'balance', lastMove = null;
+        const PIECE_DATA = {
+            'K': {name:'王', size:'p-K'}, 'R': {name:'飛', size:'p-R'}, 'B': {name:'角', size:'p-B'},
+            'G': {name:'金', size:'p-G'}, 'S': {name:'銀', size:'p-S'}, 'N': {name:'桂', size:'p-N'},
+            'L': {name:'香', size:'p-L'}, 'P': {name:'歩', size:'p-P'},
+            'R+': {name:'龍', size:'p-R'}, 'B+': {name:'馬', size:'p-B'}, 'S+': {name:'全', size:'p-S'},
+            'N+': {name:'圭', size:'p-N'}, 'L+': {name:'杏', size:'p-L'}, 'P+': {name:'と', size:'p-P'}
+        };
+        const SCORES = { 'K':90000, 'R':1200, 'B':1100, 'G':600, 'S':500, 'N':400, 'L':300, 'P':100, 'R+':1700, 'B+':1500, 'S+':700, 'N+':700, 'L+':700, 'P+':700 };
+
+        let board = [], handP1 = [], handP2 = [], kifu = [];
+        let isTurnP1 = true, isGameOver = false, selected = null, is1vs1 = false, level = 20, aiStyle = 'balance', lastMove = null;
 
         const lvSelect = document.getElementById('ai-level');
         const lvNames = ["10級","9級","8級","7級","6級","5級","4級","3級","2級","1級","初段","二段","三段","四段","五段","六段","七段","八段","九段","十段"];
-        lvNames.forEach((n, i) => { const opt = document.createElement('option'); opt.value = i + 1; opt.textContent = n; if(i === 19) opt.selected = true; lvSelect.appendChild(opt); });
+        lvNames.forEach((n, i) => {
+            const opt = document.createElement('option');
+            opt.value = i + 1; opt.textContent = n;
+            if(i === 19) opt.selected = true;
+            lvSelect.appendChild(opt);
+        });
 
-        function toggleAILevelUI() { const is1v1 = document.getElementById('mode-1vs1').checked; document.getElementById('ai-level-group').style.opacity = is1v1 ? "0.3" : "1"; document.getElementById('ai-style-group').style.opacity = is1v1 ? "0.3" : "1"; }
-        function startGame() { is1vs1 = document.getElementById('mode-1vs1').checked; level = parseInt(lvSelect.value); aiStyle = document.getElementById('ai-style').value; isTurnP1 = document.getElementById('first-move').value === 'p1'; initGame(); document.getElementById('home-screen').classList.remove('active'); document.getElementById('game-screen').classList.add('active'); updateStatus(); render(); if(!isTurnP1 && !is1vs1) setTimeout(aiAction, 800); }
-        function initGame() { board = [['l','n','s','g','k','g','s','n','l'],[' ','r',' ',' ',' ',' ',' ','b',' '],['p','p','p','p','p','p','p','p','p'],[' ',' ',' ',' ',' ',' ',' ',' ',' '],[' ',' ',' ',' ',' ',' ',' ',' ',' '],[' ',' ',' ',' ',' ',' ',' ',' ',' '],['P','P','P','P','P','P','P','P','P'],[' ','B',' ',' ',' ',' ',' ','R',' '],['L','N','S','G','K','G','S','N','L']]; handP1 = []; handP2 = []; kifu = []; isGameOver = false; }
+        function toggleAILevelUI() {
+            const is1v1 = document.getElementById('mode-1vs1').checked;
+            document.getElementById('ai-level-group').style.opacity = is1v1 ? "0.3" : "1";
+            document.getElementById('ai-style-group').style.opacity = is1v1 ? "0.3" : "1";
+        }
+
+        function startGame() {
+            is1vs1 = document.getElementById('mode-1vs1').checked;
+            level = parseInt(lvSelect.value);
+            aiStyle = document.getElementById('ai-style').value;
+            const first = document.getElementById('first-move').value;
+            isTurnP1 = (first === 'p1') ? true : (first === 'p2' ? false : Math.random() < 0.5);
+            initGame();
+            document.getElementById('home-screen').classList.remove('active');
+            document.getElementById('game-screen').classList.add('active');
+            updateStatus();
+            render();
+            if(!isTurnP1 && !is1vs1) setTimeout(aiAction, 800);
+        }
+
+        function initGame() {
+            board = [['l','n','s','g','k','g','s','n','l'],[' ','r',' ',' ',' ',' ',' ','b',' '],['p','p','p','p','p','p','p','p','p'],[' ',' ',' ',' ',' ',' ',' ',' ',' '],[' ',' ',' ',' ',' ',' ',' ',' ',' '],[' ',' ',' ',' ',' ',' ',' ',' ',' '],['P','P','P','P','P','P','P','P','P'],[' ','B',' ',' ',' ',' ',' ','R',' '],['L','N','S','G','K','G','S','N','L']];
+            handP1 = []; handP2 = []; kifu = []; isGameOver = false; lastMove = null;
+        }
 
         function render() {
             const bEl = document.getElementById('board'); bEl.innerHTML = '';
             for(let r=0; r<9; r++) {
                 for(let c=0; c<9; c++) {
-                    const sq = document.createElement('div'); sq.className = 'sq';
-                    if(selected?.r === r && selected?.c === c) sq.classList.add('selected');
+                    const sq = document.createElement('div');
+                    sq.className = 'sq';
+                    if(selected?.type === 'board' && selected?.r === r && selected?.c === c) sq.classList.add('selected');
                     if(lastMove?.tr === r && lastMove?.tc === c) sq.classList.add('last-move');
                     const p = board[r][c];
-                    if(p !== ' ') { const pEl = document.createElement('div'); pEl.className = `piece ${p === p.toLowerCase() ? 'p2-side' : ''} ${p.includes('+') ? 'promoted' : ''} ${PIECE_DATA[p.toUpperCase()]?.size}`; pEl.textContent = PIECE_DATA[p.toUpperCase()]?.name; sq.appendChild(pEl); }
-                    sq.onclick = () => handleSquareClick(r, c); bEl.appendChild(sq);
+                    if(p !== ' ') {
+                        const pEl = document.createElement('div');
+                        const isP2 = p === p.toLowerCase();
+                        pEl.className = `piece ${isP2 ? 'p2-side' : ''} ${p.includes('+') ? 'promoted' : ''} ${PIECE_DATA[p.toUpperCase()]?.size}`;
+                        pEl.textContent = PIECE_DATA[p.toUpperCase()]?.name;
+                        sq.appendChild(pEl);
+                    }
+                    sq.onclick = () => handleSquareClick(r, c);
+                    bEl.appendChild(sq);
                 }
             }
-            renderHand('hand-p1', handP1, true); renderHand('hand-p2', handP2, false);
+            renderHand('hand-p1', handP1, true);
+            renderHand('hand-p2', handP2, false);
         }
 
         function renderHand(id, hand, isP1) {
             const el = document.getElementById(id); el.innerHTML = '';
             const counts = {}; hand.forEach(x => counts[x] = (counts[x]||0)+1);
             Object.keys(counts).sort().forEach(p => {
-                const d = document.createElement('div'); d.className = 'hand-piece' + (selected?.piece === p && (selected.type === 'hand' && isTurnP1 === isP1) ? ' selected' : ''); d.textContent = PIECE_DATA[p]?.name;
-                if(counts[p] > 1) { const b = document.createElement('div'); b.className='badge'; b.textContent=counts[p]; d.appendChild(b); }
+                const d = document.createElement('div');
+                d.className = 'hand-piece' + (selected?.type === 'hand' && selected.piece === p && isTurnP1 === isP1 ? ' selected' : '');
+                d.textContent = PIECE_DATA[p]?.name;
+                if(counts[p] > 1) { 
+                    const b = document.createElement('div'); b.className='badge'; b.textContent=counts[p]; 
+                    d.appendChild(b); 
+                }
                 d.onclick = (e) => { e.stopPropagation(); if(isTurnP1 === isP1) { selected = {type:'hand', piece:p}; render(); }};
                 el.appendChild(d);
             });
@@ -192,85 +273,243 @@
 
         function handleSquareClick(r, c) {
             if(isGameOver || (!isTurnP1 && !is1vs1)) return;
+            const p = board[r][c];
             if(selected) {
                 const moves = getLegalMoves(board, isTurnP1);
                 const move = moves.find(m => m.tr === r && m.tc === c && (selected.type === 'board' ? (m.fr === selected.r && m.fc === selected.c) : (m.piece === selected.piece)));
                 if(move) {
                     if(move.type === 'move') {
-                        const pc = board[move.fr][move.fc]; const isPromotable = !pc.includes('+') && "PSNLBR".includes(pc.toUpperCase()) && (isTurnP1 ? r <= 2 || move.fr <= 2 : r >= 6 || move.fr >= 6);
-                        if(isPromotable) showModal("成り", "成りますか？", [{ label: "成る", class: "btn-confirm", action: () => executeMove(move.fr, move.fc, r, c, true) }, { label: "成らない", class: "btn-cancel", action: () => executeMove(move.fr, move.fc, r, c, false) }]);
-                        else executeMove(move.fr, move.fc, r, c, false);
-                    } else { board[r][c] = isTurnP1 ? selected.piece : selected.piece.toLowerCase(); (isTurnP1 ? handP1 : handP2).splice((isTurnP1 ? handP1 : handP2).indexOf(selected.piece), 1); endTurn(r, c); }
-                    selected = null; return;
+                        const pc = board[move.fr][move.fc];
+                        const isPromotable = !pc.includes('+') && "PSNLBR".includes(pc.toUpperCase()) && (isTurnP1 ? r <= 2 || move.fr <= 2 : r >= 6 || move.fr >= 6);
+                        const forcePromote = (pc.toUpperCase()==='P' || pc.toUpperCase()==='L') && (isTurnP1 ? r===0 : r===8) || (pc.toUpperCase()==='N' && (isTurnP1 ? r<=1 : r>=7));
+                        const fr = move.fr, fc = move.fc; selected = null;
+                        if(forcePromote) executeMove(fr, fc, r, c, true);
+                        else if(isPromotable) {
+                            showModal("成り", "成りますか？", [
+                                { label: "成る", class: "btn-confirm", action: () => executeMove(fr, fc, r, c, true) },
+                                { label: "成らない", class: "btn-cancel", action: () => executeMove(fr, fc, r, c, false) }
+                            ]);
+                        } else executeMove(fr, fc, r, c, false);
+                    } else {
+                        board[r][c] = isTurnP1 ? selected.piece : selected.piece.toLowerCase();
+                        const h = isTurnP1 ? handP1 : handP2; h.splice(h.indexOf(selected.piece), 1);
+                        kifu.push(`打${9-c}${r+1}${PIECE_DATA[selected.piece].name}`);
+                        selected = null; endTurn(r, c);
+                    }
+                    return;
                 }
                 selected = null; render();
-            } else { const p = board[r][c]; if(p !== ' ' && (isTurnP1 ? p === p.toUpperCase() : p === p.toLowerCase())) { selected = {type:'board', r, c}; render(); } }
+            } else if(p !== ' ' && (isTurnP1 ? p === p.toUpperCase() : p === p.toLowerCase())) {
+                selected = {type:'board', r, c}; render();
+            }
         }
 
-        function executeMove(fr, fc, tr, tc, promote) { let p = board[fr][fc]; if(board[tr][tc] !== ' ') (isTurnP1 ? handP1 : handP2).push(board[tr][tc].replace('+', '').toUpperCase()); if(promote) p += '+'; board[tr][tc] = p; board[fr][fc] = ' '; endTurn(tr, tc); }
-        function endTurn(tr, tc) { lastMove = {tr, tc}; isTurnP1 = !isTurnP1; render(); updateStatus(); if(isCheck(board, isTurnP1)) { if(getLegalMoves(board, isTurnP1).length === 0) { finishGame(!isTurnP1 ? "先手の勝利！" : "AIの勝利！"); return; } flashOte(); } if(!isTurnP1 && !is1vs1) setTimeout(aiAction, 600); }
+        function executeMove(fr, fc, tr, tc, promote) {
+            let p = board[fr][fc]; const target = board[tr][tc];
+            if(target !== ' ') (isTurnP1 ? handP1 : handP2).push(target.replace('+', '').toUpperCase());
+            if(promote) p += '+'; board[tr][tc] = p; board[fr][fc] = ' ';
+            kifu.push(`${9-fc}${fr+1}${9-tc}${tc+1}${PIECE_DATA[p.toUpperCase()].name}${promote?'成':''}`);
+            endTurn(tr, tc);
+        }
+
+        function endTurn(tr, tc) {
+            lastMove = {tr, tc}; isTurnP1 = !isTurnP1; render(); updateStatus();
+            if(isCheck(board, isTurnP1)) {
+                if(getLegalMoves(board, isTurnP1).length === 0) { finishGame(!isTurnP1 ? "プレイヤー1の勝利！" : "AIの勝利！"); return; }
+                flashOte();
+            } else if(getLegalMoves(board, isTurnP1).length === 0) finishGame("詰み（ステイルメイト）");
+            if(!isTurnP1 && !is1vs1) setTimeout(aiAction, 600);
+        }
 
         function canMove(fr, fc, tr, tc, b) {
-            const p = b[fr][fc]; const target = b[tr][tc]; if(target !== ' ' && (p === p.toUpperCase()) === (target === target.toUpperCase())) return false;
+            const p = b[fr][fc]; const target = b[tr][tc];
+            if(target !== ' ' && (p === p.toUpperCase()) === (target === target.toUpperCase())) return false;
             const dr = tr-fr, dc = tc-fc, adr = Math.abs(dr), adc = Math.abs(dc), s = p === p.toUpperCase() ? -1 : 1;
-            if(p.includes('+')) { const base = p.replace('+', '').toUpperCase(); if(base === 'R') return (dr===0 || dc===0 || (adr===1 && adc===1)) && isPathClear(fr,fc,tr,tc,b); if(base === 'B') return (adr===adc || (adr===1 && dc===0) || (adc===1 && dr===0)) && isPathClear(fr,fc,tr,tc,b); return adr<=1 && adc<=1 && !(dr===-s && adc===1); }
-            switch(p.toUpperCase()) { case 'P': return dc===0 && dr===s; case 'L': return dc===0 && dr*s>0 && isPathClear(fr,fc,tr,tc,b); case 'N': return dr===s*2 && adc===1; case 'S': return (adr===1 && adc===1) || (dr===s && dc===0); case 'G': return adr<=1 && adc<=1 && !(dr===-s && adc===1); case 'K': return adr<=1 && adc<=1; case 'R': return (dr===0 || dc===0) && isPathClear(fr,fc,tr,tc,b); case 'B': return adr===adc && isPathClear(fr,fc,tr,tc,b); } return false;
+            if(p.includes('+')) {
+                const base = p.replace('+', '').toUpperCase();
+                if(base === 'R') return (dr===0 || dc===0 || (adr===1 && adc===1)) && isPathClear(fr,fc,tr,tc,b);
+                if(base === 'B') return (adr===adc || (adr===1 && dc===0) || (adc===1 && dr===0)) && isPathClear(fr,fc,tr,tc,b);
+                return adr<=1 && adc<=1 && !(dr===-s && adc===1);
+            }
+            switch(p.toUpperCase()) {
+                case 'P': return dc===0 && dr===s;
+                case 'L': return dc===0 && dr*s>0 && isPathClear(fr,fc,tr,tc,b);
+                case 'N': return dr===s*2 && adc===1;
+                case 'S': return (adr===1 && adc===1) || (dr===s && dc===0);
+                case 'G': return adr<=1 && adc<=1 && !(dr===-s && adc===1);
+                case 'K': return adr<=1 && adc<=1;
+                case 'R': return (dr===0 || dc===0) && isPathClear(fr,fc,tr,tc,b);
+                case 'B': return adr===adc && isPathClear(fr,fc,tr,tc,b);
+            }
+            return false;
         }
-        function isPathClear(fr, fc, tr, tc, b) { const sr = Math.sign(tr-fr), sc = Math.sign(tc-fc); let r = fr+sr, c = fc+sc; while(r!==tr || c!==tc) { if(b[r][c] !== ' ') return false; r+=sr; c+=sc; } return true; }
-        function isCheck(b, isP1) { let kr, kc; for(let r=0; r<9; r++) for(let c=0; c<9; c++) if(b[r][c] === (isP1?'K':'k')) { kr=r; kc=c; } if(kr === undefined) return false; for(let r=0; r<9; r++) for(let c=0; c<9; c++) { const p = b[r][c]; if(p !== ' ' && (p === p.toUpperCase()) !== isP1) if(canMove(r, c, kr, kc, b)) return true; } return false; }
+
+        function isPathClear(fr, fc, tr, tc, b) {
+            const sr = Math.sign(tr-fr), sc = Math.sign(tc-fc);
+            let r = fr+sr, c = fc+sc;
+            while(r!==tr || c!==tc) { if(b[r][c] !== ' ') return false; r+=sr; c+=sc; }
+            return true;
+        }
+
+        function canDrop(p, tr, tc, isP1, b) {
+            if(b[tr][tc] !== ' ') return false;
+            if((p==='P'||p==='L') && (isP1?tr===0:tr===8)) return false;
+            if(p==='N' && (isP1?tr<=1:tr>=7)) return false;
+            if(p==='P') for(let r=0; r<9; r++) if(b[r][tc] === (isP1?'P':'p')) return false;
+            return true;
+        }
+
+        function isCheck(b, isP1) {
+            let kr, kc; const target = isP1 ? 'K' : 'k';
+            for(let r=0; r<9; r++) for(let c=0; c<9; c++) if(b[r][c] === target) { kr=r; kc=c; }
+            if(kr === undefined) return false;
+            for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
+                const p = b[r][c]; if(p !== ' ' && (p === p.toUpperCase()) !== isP1) if(canMove(r, c, kr, kc, b)) return true;
+            }
+            return false;
+        }
 
         function getLegalMoves(b, isP1) {
             let moves = [];
             for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
                 if(b[r][c] !== ' ' && (b[r][c] === b[r][c].toUpperCase()) === isP1) {
-                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) { if(canMove(r, c, tr, tc, b)) { let nb = b.map(row => [...row]); nb[tr][tc] = nb[r][c]; nb[r][c] = ' '; if(!isCheck(nb, isP1)) moves.push({type:'move', fr:r, fc:c, tr, tc}); } }
+                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) {
+                        if(canMove(r, c, tr, tc, b)) {
+                            let nb = b.map(row => [...row]); nb[tr][tc] = nb[r][c]; nb[r][c] = ' ';
+                            if(!isCheck(nb, isP1)) moves.push({type:'move', fr:r, fc:c, tr, tc});
+                        }
+                    }
                 }
             }
-            const h = isP1 ? handP1 : handP2; [...new Set(h)].forEach(p => {
-                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) { if(b[tr][tc] === ' ') { let nb = b.map(row => [...row]); nb[tr][tc] = isP1 ? p : p.toLowerCase(); if(!isCheck(nb, isP1)) moves.push({type:'drop', piece:p, tr, tc}); } }
+            const h = isP1 ? handP1 : handP2;
+            [...new Set(h)].forEach(p => {
+                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(canDrop(p, tr, tc, isP1, b)) {
+                    let nb = b.map(row => [...row]); nb[tr][tc] = isP1 ? p : p.toLowerCase();
+                    if(!isCheck(nb, isP1)) moves.push({type:'drop', piece:p, tr, tc});
+                }
             });
             return moves;
         }
 
         function aiAction() {
-            const moves = getLegalMoves(board, false); if(moves.length === 0) return;
+            if(isGameOver) return;
+            const moves = getLegalMoves(board, false);
+            if(moves.length === 0) return;
+            
             let bestMove = null; let maxScore = -Infinity;
-            const rand = (21 - level) * 15;
+            const randFactor = Math.max(0, (20 - level) * 25);
+            const turnCount = kifu.length;
 
             moves.forEach(m => {
-                let score = Math.random() * rand;
+                let score = Math.random() * randFactor;
+                const target = m.type === 'move' ? board[m.tr][m.tc] : ' ';
                 const pc = (m.type === 'move' ? board[m.fr][m.fc] : m.piece).toUpperCase();
                 const tr = m.tr, tc = m.tc;
 
-                if(m.type === 'move') {
-                    if(board[tr][tc] !== ' ') score += SCORES[board[tr][tc].toUpperCase()] * 2;
-                    // 無駄な往復防止: 飛車が一度振ったらそこに留まる評価
+                // 基本駒価値
+                if(target !== ' ') score += SCORES[target.toUpperCase()] * 2;
+
+                // 戦型ごとの序盤・中盤ロジック
+                if(aiStyle === 'ibisha') {
                     if(pc === 'R') {
-                        if(aiStyle === 'ibisha' && tc >= 6) score += 150;
-                        if(aiStyle === 'furibisha' && tc <= 3) score += 150;
-                        if(lastMove && lastMove.tr === m.fr && lastMove.tc === m.fc) score -= 100; // 直前の場所に戻る手にペナルティ
+                        if(tc >= 6) score += 50; // 飛車は右側をキープ
+                        if(turnCount < 10 && m.type === 'move') score -= 100; // 序盤に飛車を無闇に動かさない
                     }
+                    if(pc === 'S' && tc >= 5 && tr >= 2) score += 30; // 銀を前に出す
+                    if(pc === 'K' && tc >= 6) score += 40; // 王は右へ
+                } else if(aiStyle === 'furibisha') {
+                    if(pc === 'R') {
+                        if(turnCount < 6 && tc <= 3) score += 200; // 序盤数手で左へ振る
+                        else if(turnCount >= 6 && tc <= 3) score += 50; // 振った後はそこに居座る
+                        else if(turnCount >= 6 && tc > 3) score -= 150; // 飛車を右に戻さない
+                    }
+                    if(pc === 'K' && tc <= 2) score += 60; // 王は左（美濃）へ
                 }
-                // 戦型ごとの玉の囲い誘導
-                if(pc === 'K') {
-                    if(aiStyle === 'ibisha' && tc >= 6 && tr <= 1) score += 100;
-                    if(aiStyle === 'furibisha' && tc <= 2 && tr <= 1) score += 100;
+
+                // 高段位：大駒を大切にする
+                if(level >= 15 && m.type === 'move') {
+                    // 移動先が相手の駒に狙われているか簡易チェック
+                    let nb = board.map(row => [...row]);
+                    nb[tr][tc] = nb[m.fr][m.fc]; nb[m.fr][m.fc] = ' ';
+                    let isUnderAttack = false;
+                    for(let r=0; r<9; r++) {
+                        for(let c=0; c<9; c++) {
+                            const op = nb[r][c];
+                            if(op !== ' ' && op === op.toUpperCase()) { // 相手の駒
+                                if(canMove(r, c, tr, tc, nb)) isUnderAttack = true;
+                            }
+                        }
+                    }
+                    if(isUnderAttack && (pc === 'R' || pc === 'B')) score -= 800; // 大駒をタダで投げ出さない
                 }
-                // 攻撃的な歩の進展
-                if(pc === 'P') score += (tr * 5);
+
+                // 王手・王手回避
+                let nb2 = board.map(row => [...row]);
+                if(m.type === 'move') { nb2[tr][tc] = nb2[m.fr][m.fc]; nb2[m.fr][m.fc] = ' '; }
+                else nb2[tr][tc] = m.piece.toLowerCase();
+                if(isCheck(nb2, true)) score += 300; 
 
                 if(score > maxScore) { maxScore = score; bestMove = m; }
             });
 
-            if(bestMove.type === 'move') executeMove(bestMove.fr, bestMove.fc, bestMove.tr, bestMove.tc, (bestMove.tr >= 6 && !board[bestMove.fr][bestMove.fc].includes('+') && Math.random() > 0.2));
-            else { board[bestMove.tr][bestMove.tc] = bestMove.piece.toLowerCase(); handP2.splice(handP2.indexOf(bestMove.piece), 1); endTurn(bestMove.tr, bestMove.tc); }
+            if(!bestMove) bestMove = moves[0];
+
+            if(bestMove.type === 'move') {
+                const pc = board[bestMove.fr][bestMove.fc];
+                const force = (pc === 'p' || pc === 'l') && bestMove.tr === 8 || (pc === 'n' && bestMove.tr >= 7);
+                const autoPromote = !pc.includes('+') && "PSNLBR".includes(pc.toUpperCase()) && (bestMove.tr >= 6) && (Math.random() > (randFactor/500) || force);
+                executeMove(bestMove.fr, bestMove.fc, bestMove.tr, bestMove.tc, autoPromote);
+            } else {
+                board[bestMove.tr][bestMove.tc] = bestMove.piece.toLowerCase();
+                handP2.splice(handP2.indexOf(bestMove.piece), 1);
+                kifu.push(`打${9-bestMove.tc}${bestMove.tr+1}${PIECE_DATA[bestMove.piece].name}`);
+                endTurn(bestMove.tr, bestMove.tc);
+            }
         }
 
-        function updateStatus() { document.getElementById('status-p1').textContent = isTurnP1 ? "あなたの手番" : ""; document.getElementById('status-p2').textContent = !isTurnP1 ? "AI思考中..." : ""; }
-        function showModal(title, body, btns) { const over = document.getElementById('modal-overlay'); document.getElementById('modal-title').textContent = title; document.getElementById('modal-body').textContent = body; const container = document.getElementById('modal-btns'); container.innerHTML = ''; btns.forEach(b => { const btn = document.createElement('button'); btn.className = `modal-btn ${b.class}`; btn.textContent = b.label; btn.onclick = () => { b.action(); over.style.display = 'none'; }; container.appendChild(btn); }); over.style.display = 'flex'; }
-        function flashOte() { const el = document.getElementById('ote-notification'); el.style.opacity = 1; setTimeout(() => el.style.opacity = 0, 1000); }
-        function finishGame(msg) { isGameOver = true; showModal("対局終了", msg, [{ label: "タイトルへ", class: "btn-confirm", action: () => location.reload() }]); }
-        function downloadKifu() {} 
+        function updateStatus() {
+            const s1 = document.getElementById('status-p1'), s2 = document.getElementById('status-p2');
+            s1.className = 'status-bar' + (isTurnP1 ? ' active-turn' : '');
+            s2.className = 'status-bar' + (!isTurnP1 ? ' active-turn' : '');
+            if(is1vs1) {
+                s2.style.transform = "rotate(180deg)";
+                s1.textContent = isTurnP1 ? "プレイヤー1の手番" : "";
+                s2.textContent = !isTurnP1 ? "プレイヤー2の手番" : "";
+            } else {
+                s2.style.transform = "rotate(0deg)";
+                s1.textContent = isTurnP1 ? "あなたの手番" : "";
+                s2.textContent = !isTurnP1 ? `AI思考中...（${document.getElementById('ai-style').options[document.getElementById('ai-style').selectedIndex].text}）` : "";
+            }
+        }
+
+        function showModal(title, body, btns) {
+            const over = document.getElementById('modal-overlay');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').textContent = body;
+            const container = document.getElementById('modal-btns'); container.innerHTML = '';
+            btns.forEach(b => {
+                const btn = document.createElement('button'); btn.className = `modal-btn ${b.class}`; btn.textContent = b.label;
+                btn.onclick = (e) => { e.preventDefault(); b.action(); over.style.display = 'none'; };
+                container.appendChild(btn);
+            });
+            over.style.display = 'flex';
+        }
+
+        function flashOte() {
+            const el = document.getElementById('ote-notification');
+            el.style.opacity = 1; setTimeout(() => el.style.opacity = 0, 1000);
+        }
+
+        function finishGame(msg) {
+            isGameOver = true;
+            showModal("対局終了", msg, [{ label: "タイトルへ", class: "btn-confirm", action: () => location.reload() }]);
+        }
+
+        function downloadKifu() {
+            const blob = new Blob(["\ufeff" + kifu.join('\n')], {type:'text/plain'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'shogi_kifu.txt'; a.click();
+        }
     </script>
 </body>
 </html>
