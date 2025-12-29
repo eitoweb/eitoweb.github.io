@@ -76,21 +76,23 @@
 
         .hand-box {
             background: rgba(0,0,0,0.2); border-radius: 8px; width: 558px; min-height: 55px;
-            display: flex; align-items: center; gap: 8px; padding: 4px 12px; margin: 8px 0;
+            display: flex; align-items: center; gap: 12px; padding: 6px 16px; margin: 8px 0;
             border: 1px solid rgba(255,255,255,0.1);
         }
         .hand-piece {
-            background: var(--piece-bg); width: 36px; height: 40px; display: flex; justify-content: center; align-items: center;
-            cursor: pointer; position: relative; font-weight: bold; font-size: 22px; color: var(--piece-text);
+            background: var(--piece-bg); width: 40px; height: 44px; display: flex; justify-content: center; align-items: center;
+            cursor: pointer; position: relative; font-weight: bold; font-size: 24px; color: var(--piece-text);
             clip-path: polygon(50% 0%, 93% 18%, 100% 100%, 0% 100%, 7% 18%);
-            overflow: visible;
+            overflow: visible; flex-shrink: 0;
         }
         .hand-piece.selected { outline: 3px solid #ffeb3b; box-shadow: 0 0 15px #ffeb3b; }
         .badge { 
-            position: absolute; top: -5px; right: -5px; background: #d32f2f; color: white; 
-            font-size: 11px; min-width: 18px; height: 18px; border-radius: 50%; 
+            position: absolute; top: 0; right: 0; transform: translate(40%, -40%);
+            background: #d32f2f; color: white; 
+            font-size: 13px; min-width: 20px; height: 20px; border-radius: 10px;
             display: flex; align-items: center; justify-content: center;
-            border: 1px solid white; font-weight: 900; pointer-events: none; z-index: 5;
+            border: 2px solid #fff; font-weight: 900; pointer-events: none; z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
         #modal-overlay {
@@ -154,8 +156,8 @@
                 <label>AI 戦型</label>
                 <select id="ai-style">
                     <option value="balance">バランス（標準）</option>
-                    <option value="ibisha">居飛車（積極攻め）</option>
-                    <option value="furibisha">振り飛車（守備重視）</option>
+                    <option value="ibisha">居飛車（飛車固定・矢倉）</option>
+                    <option value="furibisha">振り飛車（飛車移動・美濃）</option>
                 </select>
             </div>
             <div class="option-group">
@@ -172,9 +174,9 @@
 
     <div id="game-screen" class="screen">
         <div id="status-p2" class="status-bar"></div>
-        <div class="hand-box" id="hand-p2-container" style="transform: rotate(180deg);"><div id="hand-p2" style="display:flex; gap:12px;"></div></div>
+        <div class="hand-box" id="hand-p2-container" style="transform: rotate(180deg);"><div id="hand-p2" style="display:flex; gap:16px;"></div></div>
         <div id="board-container"><div id="board"></div></div>
-        <div class="hand-box" id="hand-p1-container"><div id="hand-p1" style="display:flex; gap:12px;"></div></div>
+        <div class="hand-box" id="hand-p1-container"><div id="hand-p1" style="display:flex; gap:16px;"></div></div>
         <div id="status-p1" class="status-bar"></div>
         <div style="margin-top:20px; display:flex; gap:15px;">
             <button onclick="downloadKifu()" style="background:#444; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">棋譜DL</button>
@@ -190,7 +192,7 @@
             'R+': {name:'龍', size:'p-R'}, 'B+': {name:'馬', size:'p-B'}, 'S+': {name:'全', size:'p-S'},
             'N+': {name:'圭', size:'p-N'}, 'L+': {name:'杏', size:'p-L'}, 'P+': {name:'と', size:'p-P'}
         };
-        const SCORES = { 'K':50000, 'R':1000, 'B':900, 'G':600, 'S':500, 'N':400, 'L':300, 'P':100, 'R+':1500, 'B+':1300, 'S+':700, 'N+':700, 'L+':700, 'P+':700 };
+        const SCORES = { 'K':90000, 'R':1000, 'B':900, 'G':600, 'S':500, 'N':400, 'L':300, 'P':100, 'R+':1500, 'B+':1300, 'S+':700, 'N+':700, 'L+':700, 'P+':700 };
 
         let board = [], handP1 = [], handP2 = [], kifu = [];
         let isTurnP1 = true, isGameOver = false, selected = null, is1vs1 = false, level = 20, aiStyle = 'balance', lastMove = null;
@@ -231,26 +233,12 @@
 
         function render() {
             const bEl = document.getElementById('board'); bEl.innerHTML = '';
-            const legalMoves = selected ? getLegalMoves(board, isTurnP1).filter(m => {
-                if(selected.type === 'board') return m.type === 'move' && m.fr === selected.r && m.fc === selected.c;
-                if(selected.type === 'hand') return m.type === 'drop' && m.piece === selected.piece;
-                return false;
-            }) : [];
-
             for(let r=0; r<9; r++) {
                 for(let c=0; c<9; c++) {
                     const sq = document.createElement('div');
                     sq.className = 'sq';
                     if(selected?.type === 'board' && selected?.r === r && selected?.c === c) sq.classList.add('selected');
                     if(lastMove?.tr === r && lastMove?.tc === c) sq.classList.add('last-move');
-                    
-                    // 合法手ガイド
-                    if(legalMoves.some(m => m.tr === r && m.tc === c)) {
-                        const guide = document.createElement('div');
-                        guide.style = "width:12px; height:12px; background:rgba(0,0,0,0.1); border-radius:50%; position:absolute; z-index:1;";
-                        sq.appendChild(guide);
-                    }
-
                     const p = board[r][c];
                     if(p !== ' ') {
                         const pEl = document.createElement('div');
@@ -285,21 +273,16 @@
 
         function handleSquareClick(r, c) {
             if(isGameOver || (!isTurnP1 && !is1vs1)) return;
-            const moves = getLegalMoves(board, isTurnP1);
-            
+            const p = board[r][c];
             if(selected) {
-                const move = moves.find(m => 
-                    m.tr === r && m.tc === c && 
-                    (selected.type === 'board' ? (m.fr === selected.r && m.fc === selected.c) : (m.piece === selected.piece))
-                );
-
+                const moves = getLegalMoves(board, isTurnP1);
+                const move = moves.find(m => m.tr === r && m.tc === c && (selected.type === 'board' ? (m.fr === selected.r && m.fc === selected.c) : (m.piece === selected.piece)));
                 if(move) {
                     if(move.type === 'move') {
-                        const movePiece = board[move.fr][move.fc];
-                        const isPromotable = !movePiece.includes('+') && "PSNLBR".includes(movePiece.toUpperCase()) && (isTurnP1 ? r <= 2 || move.fr <= 2 : r >= 6 || move.fr >= 6);
-                        const forcePromote = (movePiece.toUpperCase()==='P' || movePiece.toUpperCase()==='L') && (isTurnP1 ? r===0 : r===8) || (movePiece.toUpperCase()==='N' && (isTurnP1 ? r<=1 : r>=7));
-                        const fr = move.fr, fc = move.fc;
-                        selected = null;
+                        const pc = board[move.fr][move.fc];
+                        const isPromotable = !pc.includes('+') && "PSNLBR".includes(pc.toUpperCase()) && (isTurnP1 ? r <= 2 || move.fr <= 2 : r >= 6 || move.fr >= 6);
+                        const forcePromote = (pc.toUpperCase()==='P' || pc.toUpperCase()==='L') && (isTurnP1 ? r===0 : r===8) || (pc.toUpperCase()==='N' && (isTurnP1 ? r<=1 : r>=7));
+                        const fr = move.fr, fc = move.fc; selected = null;
                         if(forcePromote) executeMove(fr, fc, r, c, true);
                         else if(isPromotable) {
                             showModal("成り", "成りますか？", [
@@ -316,23 +299,15 @@
                     return;
                 }
                 selected = null; render();
-            } else {
-                const p = board[r][c];
-                if(p !== ' ' && (isTurnP1 ? p === p.toUpperCase() : p === p.toLowerCase())) {
-                    selected = {type:'board', r, c}; render();
-                }
+            } else if(p !== ' ' && (isTurnP1 ? p === p.toUpperCase() : p === p.toLowerCase())) {
+                selected = {type:'board', r, c}; render();
             }
         }
 
         function executeMove(fr, fc, tr, tc, promote) {
-            let p = board[fr][fc];
-            const target = board[tr][tc];
-            if(target !== ' ') {
-                const cap = target.replace('+', '').toUpperCase();
-                (isTurnP1 ? handP1 : handP2).push(cap);
-            }
-            if(promote) p += '+';
-            board[tr][tc] = p; board[fr][fc] = ' ';
+            let p = board[fr][fc]; const target = board[tr][tc];
+            if(target !== ' ') (isTurnP1 ? handP1 : handP2).push(target.replace('+', '').toUpperCase());
+            if(promote) p += '+'; board[tr][tc] = p; board[fr][fc] = ' ';
             kifu.push(`${9-fc}${fr+1}${9-tc}${tc+1}${PIECE_DATA[p.toUpperCase()].name}${promote?'成':''}`);
             endTurn(tr, tc);
         }
@@ -340,14 +315,9 @@
         function endTurn(tr, tc) {
             lastMove = {tr, tc}; isTurnP1 = !isTurnP1; render(); updateStatus();
             if(isCheck(board, isTurnP1)) {
-                if(getLegalMoves(board, isTurnP1).length === 0) {
-                    finishGame(!isTurnP1 ? "先手（下）の勝利！" : (is1vs1 ? "後手（上）" : "AI") + " の勝利！");
-                    return;
-                }
+                if(getLegalMoves(board, isTurnP1).length === 0) { finishGame(!isTurnP1 ? "プレイヤー1の勝利！" : "AIの勝利！"); return; }
                 flashOte();
-            } else if(getLegalMoves(board, isTurnP1).length === 0) {
-                finishGame("詰み（ステイルメイト）");
-            }
+            } else if(getLegalMoves(board, isTurnP1).length === 0) finishGame("詰み（ステイルメイト）");
             if(!isTurnP1 && !is1vs1) setTimeout(aiAction, 600);
         }
 
@@ -394,13 +364,11 @@
             for(let r=0; r<9; r++) for(let c=0; c<9; c++) if(b[r][c] === target) { kr=r; kc=c; }
             if(kr === undefined) return false;
             for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
-                const p = b[r][c];
-                if(p !== ' ' && (p === p.toUpperCase()) !== isP1) if(canMove(r, c, kr, kc, b)) return true;
+                const p = b[r][c]; if(p !== ' ' && (p === p.toUpperCase()) !== isP1) if(canMove(r, c, kr, kc, b)) return true;
             }
             return false;
         }
 
-        // 自分の王が取られる手を排除する合法手生成
         function getLegalMoves(b, isP1) {
             let moves = [];
             for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
@@ -415,11 +383,9 @@
             }
             const h = isP1 ? handP1 : handP2;
             [...new Set(h)].forEach(p => {
-                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) {
-                    if(canDrop(p, tr, tc, isP1, b)) {
-                        let nb = b.map(row => [...row]); nb[tr][tc] = isP1 ? p : p.toLowerCase();
-                        if(!isCheck(nb, isP1)) moves.push({type:'drop', piece:p, tr, tc});
-                    }
+                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(canDrop(p, tr, tc, isP1, b)) {
+                    let nb = b.map(row => [...row]); nb[tr][tc] = isP1 ? p : p.toLowerCase();
+                    if(!isCheck(nb, isP1)) moves.push({type:'drop', piece:p, tr, tc});
                 }
             });
             return moves;
@@ -430,39 +396,43 @@
             const moves = getLegalMoves(board, false);
             if(moves.length === 0) return;
             
-            let bestMove = null;
-            const randomness = Math.max(0, (20 - level) * 15);
-            let maxScore = -Infinity;
+            let bestMove = null; let maxScore = -Infinity;
+            const randFactor = Math.max(0, (20 - level) * 20);
 
             moves.forEach(m => {
-                let score = Math.random() * randomness;
+                let score = Math.random() * randFactor;
                 const target = m.type === 'move' ? board[m.tr][m.tc] : ' ';
-                if(target !== ' ') score += SCORES[target.toUpperCase()] || 0;
-                
-                // 戦型による盤面評価
-                const p = m.type === 'move' ? board[m.fr][m.fc].toUpperCase() : m.piece;
-                if(aiStyle === 'ibisha' && p === 'R') {
-                    if(m.tc >= 5) score += 30; // 右側に飛車を置く
-                } else if(aiStyle === 'furibisha' && p === 'R') {
-                    if(m.tc <= 4) score += 40; // 左側に飛車を振る
-                }
+                if(target !== ' ') score += SCORES[target.toUpperCase()] * 1.5;
 
-                if(level > 8) {
-                    let nb = board.map(row => [...row]);
-                    if(m.type === 'move') { nb[m.tr][m.tc] = nb[m.fr][m.fc]; nb[m.fr][m.fc] = ' '; }
-                    else { nb[m.tr][m.tc] = m.piece.toLowerCase(); }
-                    if(isCheck(nb, true)) score += 150; 
+                // 戦術評価（十段なら高精度）
+                const pc = (m.type === 'move' ? board[m.fr][m.fc] : m.piece).toUpperCase();
+                const tr = m.tr, tc = m.tc;
+
+                if(aiStyle === 'ibisha') {
+                    if(pc === 'R' && tc >= 6) score += 100; // 飛車を右に固定
+                    if(pc === 'K' && tc >= 6 && tr <= 1) score += 80; // 王を右に囲う(矢倉)
+                } else if(aiStyle === 'furibisha') {
+                    if(pc === 'R' && tc <= 3) score += 100; // 飛車を左に振る
+                    if(pc === 'K' && tc <= 2 && tr <= 1) score += 80; // 王を左に囲う(美濃)
                 }
+                
+                // 駒の連携と進軍
+                if(pc === 'P' || pc === 'S' || pc === 'N') score += (tr * 10); 
+                if(m.type === 'move' && !board[m.fr][m.fc].includes('+') && tr >= 6) score += 50;
+
+                // 防御評価
+                let nb = board.map(row => [...row]);
+                if(m.type === 'move') { nb[tr][tc] = nb[m.fr][m.fc]; nb[m.fr][m.fc] = ' '; }
+                else nb[tr][tc] = m.piece.toLowerCase();
+                if(isCheck(nb, true)) score += 200; // 王手
 
                 if(score > maxScore) { maxScore = score; bestMove = m; }
             });
 
-            if(!bestMove) bestMove = moves[Math.floor(Math.random()*moves.length)];
-
             if(bestMove.type === 'move') {
-                const p = board[bestMove.fr][bestMove.fc];
-                const force = (p === 'p' || p === 'l') && bestMove.tr === 8 || (p === 'n' && bestMove.tr >= 7);
-                const autoPromote = !p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && (bestMove.tr >= 6) && (Math.random() > (randomness/300) || force);
+                const pc = board[bestMove.fr][bestMove.fc];
+                const force = (pc === 'p' || pc === 'l') && bestMove.tr === 8 || (pc === 'n' && bestMove.tr >= 7);
+                const autoPromote = !pc.includes('+') && "PSNLBR".includes(pc.toUpperCase()) && (bestMove.tr >= 6) && (Math.random() > (randFactor/400) || force);
                 executeMove(bestMove.fr, bestMove.fc, bestMove.tr, bestMove.tc, autoPromote);
             } else {
                 board[bestMove.tr][bestMove.tc] = bestMove.piece.toLowerCase();
@@ -478,8 +448,8 @@
             s2.className = 'status-bar' + (!isTurnP1 ? ' active-turn' : '');
             if(is1vs1) {
                 s2.style.transform = "rotate(180deg)";
-                s1.textContent = isTurnP1 ? "プレイヤー1 の手番" : "";
-                s2.textContent = !isTurnP1 ? "プレイヤー2 の手番" : "";
+                s1.textContent = isTurnP1 ? "プレイヤー1の手番" : "";
+                s2.textContent = !isTurnP1 ? "プレイヤー2の手番" : "";
             } else {
                 s2.style.transform = "rotate(0deg)";
                 s1.textContent = isTurnP1 ? "あなたの手番" : "";
@@ -491,11 +461,9 @@
             const over = document.getElementById('modal-overlay');
             document.getElementById('modal-title').textContent = title;
             document.getElementById('modal-body').textContent = body;
-            const container = document.getElementById('modal-btns'); 
-            container.innerHTML = '';
+            const container = document.getElementById('modal-btns'); container.innerHTML = '';
             btns.forEach(b => {
-                const btn = document.createElement('button');
-                btn.className = `modal-btn ${b.class}`; btn.textContent = b.label;
+                const btn = document.createElement('button'); btn.className = `modal-btn ${b.class}`; btn.textContent = b.label;
                 btn.onclick = (e) => { e.preventDefault(); b.action(); over.style.display = 'none'; };
                 container.appendChild(btn);
             });
