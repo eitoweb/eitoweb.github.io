@@ -156,7 +156,7 @@
         </div>
         <div id="status-p1" class="status-bar"></div>
         <div class="controls">
-            <button onclick="saveKifu()">棋譜ダウンロード</button>
+            <button onclick="downloadKifu()">棋譜をダウンロード</button>
             <button onclick="backToTitle()" style="background:#3e2723;">タイトルに戻る</button>
         </div>
     </div>
@@ -165,7 +165,7 @@
         const PIECES = { 'K': '王', 'R': '飛', 'B': '角', 'G': '金', 'S': '銀', 'N': '桂', 'L': '香', 'P': '歩', 'R+': '龍', 'B+': '馬', 'S+': '全', 'N+': '圭', 'L+': '杏', 'P+': 'と' };
         const SCORE = { 'K': 20000, 'R': 1000, 'B': 850, 'G': 600, 'S': 500, 'N': 450, 'L': 400, 'P': 100, 'R+': 1500, 'B+': 1300, 'S+': 650, 'N+': 650, 'L+': 650, 'P+': 650 };
 
-        let board = [], handP1 = [], handP2 = [];
+        let board = [], handP1 = [], handP2 = [], kifuHistory = [];
         let selected = null, isTurnP1 = true, isGameOver = false, currentLevel = 1, lastMove = null, is1vs1 = false;
 
         const levels = ["10級","9級","8級","7級","6級","5級","4級","3級","2級","1級","初段","二段","三段","四段","五段","六段","七段","八段","九段","十段"];
@@ -205,7 +205,7 @@
             currentLevel = parseInt(levelSelect.value);
             const pref = document.getElementById('first-move').value;
             isTurnP1 = pref === 'p1' ? true : (pref === 'p2' ? false : Math.random() < 0.5);
-            isGameOver = false; selected = null; lastMove = null; handP1 = []; handP2 = [];
+            isGameOver = false; selected = null; lastMove = null; handP1 = []; handP2 = []; kifuHistory = [];
             
             document.getElementById('home-screen').classList.remove('active');
             document.getElementById('game-screen').classList.add('active');
@@ -325,6 +325,8 @@
                         if (isCheck(simMove(board, tempDrop), isTurnP1)) {
                             selected = null; render(); return;
                         }
+                        const pName = PIECES[selected.piece];
+                        kifuHistory.push({ turn: isTurnP1?1:2, piece: pName, from: "持ち駒", to: `${9-c}${r+1}`, promote: "なし" });
                         board[r][c] = isTurnP1 ? selected.piece.toUpperCase() : selected.piece.toLowerCase();
                         (isTurnP1 ? handP1 : handP2).splice((isTurnP1 ? handP1 : handP2).indexOf(selected.piece), 1);
                         lastMove = { tr: r, tc: c }; selected = null; endTurn();
@@ -337,6 +339,9 @@
 
         function executeMove(fr, fc, tr, tc, promote) {
             let p = board[fr][fc];
+            const pName = PIECES[p.toUpperCase()];
+            kifuHistory.push({ turn: isTurnP1?1:2, piece: pName, from: `${9-fc}${fr+1}`, to: `${9-tc}${tr+1}`, promote: promote?"成":"" });
+            
             const target = board[tr][tc];
             lastMove = { tr, tc };
             if (target !== ' ') {
@@ -461,6 +466,8 @@
             if (best.type === 'move') {
                 executeMove(best.fr, best.fc, best.tr, best.tc, (best.tr >= 6 && !board[best.fr][best.fc].includes('+')));
             } else {
+                const pName = PIECES[best.piece];
+                kifuHistory.push({ turn: 2, piece: pName, from: "持ち駒", to: `${9-best.tc}${best.tr+1}`, promote: "なし" });
                 board[best.tr][best.tc] = best.piece.toLowerCase();
                 handP2.splice(handP2.indexOf(best.piece), 1);
                 lastMove = { tr: best.tr, tc: best.tc };
@@ -518,22 +525,27 @@
             setTimeout(() => el.classList.remove('show'), 1500);
         }
 
-        function saveKifu() {
-            let text = "【局面データ】\n";
-            text += "手番: " + (isTurnP1 ? "プレイヤー1" : "プレイヤー2/AI") + "\n";
-            text += "--- 盤面 ---\n";
-            for (let r = 0; r < 9; r++) {
-                text += board[r].map(p => p === ' ' ? '・' : p).join(' ') + "\n";
-            }
-            text += "--- 持ち駒 ---\n";
-            text += "P1: " + (handP1.length > 0 ? handP1.join(',') : "なし") + "\n";
-            text += "P2: " + (handP2.length > 0 ? handP2.join(',') : "なし") + "\n";
-
-            navigator.clipboard.writeText(text).then(() => {
-                alert("現在の局面データをクリップボードにコピーしました。");
-            }).catch(err => {
-                alert("コピーに失敗しました: " + err);
+        function downloadKifu() {
+            if (kifuHistory.length === 0) { alert("記録された指し手がありません。"); return; }
+            
+            let csvContent = "手数,手番,駒,移動元,移動先,成り\n";
+            kifuHistory.forEach((h, index) => {
+                const turnName = h.turn === 1 ? "先手(P1)" : "後手(P2/AI)";
+                csvContent += `${index + 1},${turnName},${h.piece},${h.from},${h.to},${h.promote}\n`;
             });
+
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `shogi_kifu_${timestamp}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
