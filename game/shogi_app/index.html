@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>将棋 AI</title>
+    <title>将棋 AI - 正式ルール準拠版</title>
     <style>
         :root {
             --board-color: #e3c878;
@@ -57,8 +57,6 @@
         #board-container { background: var(--board-shadow); padding: 12px; border-radius: 4px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
         #board { display: grid; grid-template-columns: repeat(9, 62px); grid-template-rows: repeat(9, 64px); gap: 1px; background: #333; }
         .sq { width: 62px; height: 64px; background-color: var(--board-color); display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; }
-        
-        /* 置けない場所のマスク */
         .sq.invalid::after { content: ""; position: absolute; width: 100%; height: 100%; background: var(--invalid-sq); z-index: 5; }
 
         .piece {
@@ -71,7 +69,6 @@
         .p-P { width: 42px; height: 46px; font-size: 28px; }
         .piece.ai { transform: rotate(180deg); } .piece.promoted { color: var(--promoted-text); }
 
-        /* 選択・最後の一手の色 */
         .sq.selected::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(255, 235, 59, 0.4); z-index: 1; }
         .sq.last-move::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(255, 87, 34, 0.4); z-index: 1; }
 
@@ -179,7 +176,6 @@
             const pref = document.getElementById('first-move').value;
             isTurnPlayer = pref === 'player' ? true : (pref === 'ai' ? false : Math.random() < 0.5);
             
-            // 状態リセット
             isGameOver = false;
             selected = null;
             lastMove = null;
@@ -252,9 +248,7 @@
                         const p = board[selected.r][selected.c];
                         const trg = board[r][c];
                         
-                        // 王を取る判定
                         if(trg.toUpperCase() === 'K') {
-                            lastMove = { tr: r, tc: c }; // 先に位置を記録
                             executeMove(selected.r, selected.c, r, c, false);
                             return; 
                         }
@@ -292,15 +286,12 @@
         function executeMove(fr, fc, tr, tc, promote) {
             let p = board[fr][fc];
             const target = board[tr][tc];
-            
-            lastMove = { tr, tc }; // 常に移動先をハイライト対象にする
+            lastMove = { tr, tc };
 
             if (target !== ' ') {
                 if(target.toUpperCase() === 'K') {
                     board[tr][tc] = promote ? p+"+" : p;
                     board[fr][fc] = ' ';
-                    isGameOver = true;
-                    render();
                     endGame(isTurnPlayer ? "あなたの勝利！王を取りました。" : "AIの勝利！王を取られました。");
                     return;
                 }
@@ -335,8 +326,6 @@
 
                 if (target.toUpperCase() === 'K') {
                     board[best.tr][best.tc] = p; board[best.fr][best.fc] = ' ';
-                    isGameOver = true;
-                    render();
                     endGame("AIの勝利！王を取られました。");
                     return;
                 }
@@ -356,16 +345,14 @@
 
         function canDrop(p, tr, tc, isP, b) {
             if (b[tr][tc] !== ' ') return false;
-            // 行き所のない駒
             if ((p==='P'||p==='L') && (isP ? tr===0 : tr===8)) return false;
             if (p==='N' && (isP ? tr<=1 : tr>=7)) return false;
             
-            // 二歩の判定（"と"も含めてチェック）
+            // 二歩の判定（と金はカウントしない）
             if (p==='P') {
                 for(let r=0; r<9; r++) {
                     const targetPiece = b[r][tc];
-                    // 自分の歩(P) または 自分のと金(P+) がある列は打てない
-                    if(targetPiece === (isP?'P':'p') || targetPiece === (isP?'P+':'p+')) return false;
+                    if(targetPiece === (isP?'P':'p')) return false;
                 }
             }
             return true;
@@ -373,7 +360,7 @@
 
         function endGame(msg) {
             isGameOver = true; 
-            selected = null; // 終了時に選択を解除
+            selected = null;
             document.getElementById('status').textContent = "対局終了";
             modal.show("対局終了", msg, [{ label: "OK", class: "btn-yes" }]);
             render();
@@ -388,7 +375,6 @@
             link.download = "shogi_kifu.csv"; link.click();
         }
 
-        // --- AIロジック ---
         function minimax(b, d, a, bt, isM) {
             if (d === 0) return { score: evaluate(b) };
             let moves = getLegalMoves(b, isM);
@@ -439,7 +425,7 @@
             }
             let h = isP ? handPlayer : handAI;
             [...new Set(h)].forEach(p => {
-                for(let tr=0; tr<9; r++) for(let tc=0; tc<9; tc++) if(canDrop(p,tr,tc,isP,b)) res.push({type:'drop',piece:p,tr,tc});
+                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(canDrop(p,tr,tc,isP,b)) res.push({type:'drop',piece:p,tr,tc});
             });
             return res;
         }
