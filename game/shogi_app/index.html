@@ -24,6 +24,16 @@
         .screen { display: none; flex-direction: column; align-items: center; }
         .screen.active { display: flex; }
 
+        /* 王手通知スタイル */
+        #ote-notification {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 5rem; font-weight: 900; color: #ffeb3b; text-shadow: 0 0 20px #d32f2f, 0 0 40px #d32f2f;
+            pointer-events: none; z-index: 200; opacity: 0; transition: opacity 0.3s ease;
+            white-space: nowrap; font-family: "Yu Mincho", "MS PMincho", serif;
+        }
+        #ote-notification.show { opacity: 1; animation: pulse 0.8s infinite alternate; }
+        @keyframes pulse { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(1.1); } }
+
         /* モーダル */
         #modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -86,6 +96,8 @@
     </style>
 </head>
 <body>
+
+    <div id="ote-notification">王手！</div>
 
     <div id="modal-overlay">
         <div class="modal-content">
@@ -249,6 +261,7 @@
                         const trg = board[r][c];
                         
                         if(trg.toUpperCase() === 'K') {
+                            recordKifu("プレイヤー", `${9-selected.fc}${selected.fr+1}`, `${9-c}${r+1}`, PIECES[p.toUpperCase()]);
                             executeMove(selected.r, selected.c, r, c, false);
                             return; 
                         }
@@ -290,10 +303,8 @@
 
             if (target !== ' ') {
                 if(target.toUpperCase() === 'K') {
-                    // 王奪取の棋譜を記録
                     recordKifu("プレイヤー", `${9-fc}${fr+1}`, `${9-tc}${tr+1}`, PIECES[p.toUpperCase()] + (promote ? "成" : ""));
-                    board[tr][tc] = promote ? p+"+" : p;
-                    board[fr][fc] = ' ';
+                    board[tr][tc] = promote ? p+"+" : p; board[fr][fc] = ' ';
                     endGame(isTurnPlayer ? "あなたの勝利！王を取りました。" : "AIの勝利！王を取られました。");
                     return;
                 }
@@ -308,8 +319,41 @@
 
         function endTurn() {
             if(isGameOver) return;
-            selected = null; isTurnPlayer = !isTurnPlayer; updateStatus(); render();
+            selected = null; isTurnPlayer = !isTurnPlayer; updateStatus(); 
+            
+            // 王手判定
+            if (isCheck(board, isTurnPlayer)) showOteNotification();
+            
+            render();
             if (!isTurnPlayer) setTimeout(aiRoutine, 600);
+        }
+
+        // 王手通知を表示
+        function showOteNotification() {
+            const el = document.getElementById('ote-notification');
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 1500);
+        }
+
+        // 王手判定ロジック
+        function isCheck(b, isP) {
+            let kr = -1, kc = -1;
+            const targetK = isP ? 'K' : 'k';
+            for (let r = 0; r < 9; r++) {
+                for (let c = 0; c < 9; c++) {
+                    if (b[r][c] === targetK) { kr = r; kc = c; break; }
+                }
+            }
+            if (kr === -1) return false;
+            for (let r = 0; r < 9; r++) {
+                for (let c = 0; c < 9; c++) {
+                    const p = b[r][c];
+                    if (p !== ' ' && (p === p.toUpperCase()) !== isP) {
+                        if (isValidMoveBasic(r, c, kr, kc, b)) return true;
+                    }
+                }
+            }
+            return false;
         }
 
         function aiRoutine() {
@@ -327,7 +371,6 @@
                 lastMove = { tr: best.tr, tc: best.tc };
 
                 if (target.toUpperCase() === 'K') {
-                    // AIによる王奪取の棋譜を記録
                     recordKifu("AI", `${9-best.fc}${best.fr+1}`, `${9-best.tr}${best.tr+1}`, PIECES[p.toUpperCase().replace('+','')]);
                     board[best.tr][best.tc] = p; board[best.fr][best.fc] = ' ';
                     endGame("AIの勝利！王を取られました。");
@@ -351,7 +394,6 @@
             if (b[tr][tc] !== ' ') return false;
             if ((p==='P'||p==='L') && (isP ? tr===0 : tr===8)) return false;
             if (p==='N' && (isP ? tr<=1 : tr>=7)) return false;
-            
             if (p==='P') {
                 for(let r=0; r<9; r++) {
                     const targetPiece = b[r][tc];
