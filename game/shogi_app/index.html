@@ -24,7 +24,6 @@
         .screen { display: none; flex-direction: column; align-items: center; }
         .screen.active { display: flex; }
 
-        /* 王手通知スタイル */
         #ote-notification {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             font-size: 5rem; font-weight: 900; color: #ffeb3b; text-shadow: 0 0 20px #d32f2f, 0 0 40px #d32f2f;
@@ -34,7 +33,6 @@
         #ote-notification.show { opacity: 1; animation: pulse 0.8s infinite alternate; }
         @keyframes pulse { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(1.1); } }
 
-        /* モーダル */
         #modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--overlay); display: none; justify-content: center; align-items: center; z-index: 100;
@@ -48,7 +46,6 @@
         .btn-yes { background: #5d4037; color: white; }
         .btn-no { background: #d7ccc8; color: #3e2723; }
 
-        /* 設定画面 */
         .menu-card {
             background: rgba(255, 255, 255, 0.1); padding: 40px; border-radius: 15px;
             text-align: center; border: 1px solid rgba(255, 255, 255, 0.2); width: 360px;
@@ -57,7 +54,6 @@
         .option-group label { color: #e3c878; font-size: 0.9rem; margin-bottom: 5px; display: block; }
         select { width: 100%; padding: 12px; background: #fdf5e6; border-radius: 6px; font-size: 1rem; color: #3e2723; }
 
-        /* ゲーム盤面 */
         .game-container { display: flex; flex-direction: column; align-items: center; gap: 10px; }
         .hand-box {
             background: #d7ccc8; color: #3e2723; padding: 8px 15px; border-radius: 6px;
@@ -187,17 +183,10 @@
             localStorage.setItem('shogi_ai_level', currentLevel);
             const pref = document.getElementById('first-move').value;
             isTurnPlayer = pref === 'player' ? true : (pref === 'ai' ? false : Math.random() < 0.5);
-            
-            isGameOver = false;
-            selected = null;
-            lastMove = null;
-            handPlayer = [];
-            handAI = [];
-            
+            isGameOver = false; selected = null; lastMove = null; handPlayer = []; handAI = [];
             document.getElementById('home-screen').classList.remove('active');
             document.getElementById('game-screen').classList.add('active');
             initGame();
-            
             const msg = isTurnPlayer ? "あなたは【先手】です" : "あなたは【後手】です";
             modal.show("対局開始", `難易度: ${levels[currentLevel-1]} / ${msg}`, [{ label: "対局開始", class: "btn-yes", action: () => { if(!isTurnPlayer) setTimeout(aiRoutine, 600); } }]);
         }
@@ -223,7 +212,6 @@
                     if (selected && selected.type === 'board' && selected.r === r && selected.c === c) sq.classList.add('selected');
                     if (lastMove && lastMove.tr === r && lastMove.tc === c) sq.classList.add('last-move');
                     if (selected && selected.type === 'hand' && !canDrop(selected.piece, r, c, true, board)) sq.classList.add('invalid');
-
                     const p = board[r][c];
                     if (p !== ' ') {
                         const pEl = document.createElement('div');
@@ -259,13 +247,10 @@
                     if (isValidMoveBasic(selected.r, selected.c, r, c, board)) {
                         const p = board[selected.r][selected.c];
                         const trg = board[r][c];
-                        
                         if(trg.toUpperCase() === 'K') {
-                            recordKifu("プレイヤー", `${9-selected.fc}${selected.fr+1}`, `${9-c}${r+1}`, PIECES[p.toUpperCase()]);
                             executeMove(selected.r, selected.c, r, c, false);
                             return; 
                         }
-
                         if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && (r <= 2 || selected.r <= 2)) {
                             if (((p === 'P' || p === 'L') && r === 0) || (p === 'N' && r <= 1)) {
                                 executeMove(selected.r, selected.c, r, c, true);
@@ -300,7 +285,6 @@
             let p = board[fr][fc];
             const target = board[tr][tc];
             lastMove = { tr, tc };
-
             if (target !== ' ') {
                 if(target.toUpperCase() === 'K') {
                     recordKifu("プレイヤー", `${9-fc}${fr+1}`, `${9-tc}${tr+1}`, PIECES[p.toUpperCase()] + (promote ? "成" : ""));
@@ -310,7 +294,6 @@
                 }
                 handPlayer.push(target.replace('+', '').toUpperCase());
             }
-            
             recordKifu("プレイヤー", `${9-fc}${fr+1}`, `${9-tc}${tr+1}`, PIECES[p.toUpperCase()] + (promote ? "成" : ""));
             if (promote) p += "+";
             board[tr][tc] = p; board[fr][fc] = ' ';
@@ -321,46 +304,58 @@
             if(isGameOver) return;
             selected = null; isTurnPlayer = !isTurnPlayer; updateStatus(); 
             
-            // 王手判定
-            if (isCheck(board, isTurnPlayer)) showOteNotification();
+            // 王手・詰み判定
+            if (isCheck(board, isTurnPlayer)) {
+                if (isCheckmate(board, isTurnPlayer)) {
+                    endGame(isTurnPlayer ? "詰みです。AIの勝利！" : "詰みです。あなたの勝利！");
+                    return;
+                }
+                showOteNotification();
+            }
             
             render();
             if (!isTurnPlayer) setTimeout(aiRoutine, 600);
         }
 
-        // 王手通知を表示
         function showOteNotification() {
             const el = document.getElementById('ote-notification');
             el.classList.add('show');
             setTimeout(() => el.classList.remove('show'), 1500);
         }
 
-        // 王手判定ロジック
+        // 王手判定
         function isCheck(b, isP) {
             let kr = -1, kc = -1;
             const targetK = isP ? 'K' : 'k';
-            for (let r = 0; r < 9; r++) {
-                for (let c = 0; c < 9; c++) {
-                    if (b[r][c] === targetK) { kr = r; kc = c; break; }
-                }
-            }
+            for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (b[r][c] === targetK) { kr = r; kc = c; break; }
             if (kr === -1) return false;
-            for (let r = 0; r < 9; r++) {
-                for (let c = 0; c < 9; c++) {
-                    const p = b[r][c];
-                    if (p !== ' ' && (p === p.toUpperCase()) !== isP) {
-                        if (isValidMoveBasic(r, c, kr, kc, b)) return true;
-                    }
+            for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+                const p = b[r][c];
+                if (p !== ' ' && (p === p.toUpperCase()) !== isP) {
+                    if (isValidMoveBasic(r, c, kr, kc, b)) return true;
                 }
             }
             return false;
+        }
+
+        // 詰み判定
+        function isCheckmate(b, isP) {
+            // 王手されていないなら詰みではない
+            if (!isCheck(b, isP)) return false;
+            // 全ての合法手を試す
+            let moves = getLegalMoves(b, isP);
+            for (let m of moves) {
+                let nextBoard = simMove(b, m);
+                // 一つでも王手を回避できる手があれば詰みではない
+                if (!isCheck(nextBoard, isP)) return false;
+            }
+            return true;
         }
 
         function aiRoutine() {
             if(isGameOver) return;
             let moves = getLegalMoves(board, false);
             if (moves.length === 0) { endGame("AI投了。あなたの勝利！"); return; }
-            
             let depth = currentLevel >= 18 ? 4 : (currentLevel >= 11 ? 3 : 2);
             let best = minimax(board, depth, -Infinity, Infinity, false).move;
             if (currentLevel <= 5 && Math.random() > (currentLevel * 0.15)) best = moves[Math.floor(Math.random() * moves.length)];
@@ -369,14 +364,12 @@
                 let p = board[best.fr][best.fc];
                 const target = board[best.tr][best.tc];
                 lastMove = { tr: best.tr, tc: best.tc };
-
                 if (target.toUpperCase() === 'K') {
                     recordKifu("AI", `${9-best.fc}${best.fr+1}`, `${9-best.tr}${best.tr+1}`, PIECES[p.toUpperCase().replace('+','')]);
                     board[best.tr][best.tc] = p; board[best.fr][best.fc] = ' ';
                     endGame("AIの勝利！王を取られました。");
                     return;
                 }
-
                 if (target !== ' ') handAI.push(target.replace('+', '').toUpperCase());
                 if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && (best.tr >= 6 || best.fr >= 6)) p += "+";
                 recordKifu("AI", `${9-best.fc}${best.fr+1}`, `${9-best.tr}${best.tr+1}`, PIECES[p.toUpperCase().replace('+','')] + (p.includes('+')?"成":""));
@@ -404,8 +397,7 @@
         }
 
         function endGame(msg) {
-            isGameOver = true; 
-            selected = null;
+            isGameOver = true; selected = null;
             document.getElementById('status').textContent = "対局終了";
             modal.show("対局終了", msg, [{ label: "OK", class: "btn-yes" }]);
             render();
@@ -507,8 +499,13 @@
 
         function simMove(b, m) {
             let n = b.map(r => [...r]);
-            if(m.type==='move'){ n[m.tr][m.tc]=n[m.fr][m.fc]; n[m.fr][m.fc]=' '; }
-            else{ n[m.tr][m.tc] = isTurnPlayer ? m.piece.toUpperCase() : m.piece.toLowerCase(); }
+            if(m.type==='move'){
+                let p = n[m.fr][m.fc];
+                // シミュレーション内での簡易成判定
+                if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && ( (p===p.toUpperCase() && m.tr<=2) || (p!==p.toUpperCase() && m.tr>=6) )) p += "+";
+                n[m.tr][m.tc]=p; n[m.fr][m.fc]=' ';
+            }
+            else{ n[m.tr][m.tc] = (m.piece === m.piece.toUpperCase()) ? m.piece.toUpperCase() : m.piece.toLowerCase(); }
             return n;
         }
     </script>
