@@ -80,20 +80,23 @@
             border: 1px solid rgba(255,255,255,0.1);
         }
         .hand-piece {
-            background: var(--piece-bg); width: 40px; height: 44px; display: flex; justify-content: center; align-items: center;
+            background: transparent; width: 44px; height: 48px; display: flex; justify-content: center; align-items: center;
             cursor: pointer; position: relative; font-weight: bold; font-size: 24px; color: var(--piece-text);
-            clip-path: polygon(50% 0%, 93% 18%, 100% 100%, 0% 100%, 7% 18%);
-            overflow: visible; flex-shrink: 0;
+            overflow: visible !important; flex-shrink: 0;
         }
-        .hand-piece.selected { outline: 3px solid #ffeb3b; box-shadow: 0 0 15px #ffeb3b; }
+        .hand-piece-inner {
+            background: var(--piece-bg); width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;
+            clip-path: polygon(50% 0%, 93% 18%, 100% 100%, 0% 100%, 7% 18%);
+        }
+        .hand-piece.selected { outline: 3px solid #ffeb3b; border-radius: 4px; box-shadow: 0 0 15px #ffeb3b; }
         
         .badge { 
-            position: absolute; top: -5px; right: -8px;
+            position: absolute; top: -8px; right: -12px;
             background: #d32f2f; color: white; 
-            font-size: 14px; min-width: 22px; height: 22px; border-radius: 11px;
+            font-size: 14px; min-width: 24px; height: 24px; border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
-            border: 2px solid #fff; font-weight: 900; pointer-events: none; z-index: 1000;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            border: 2px solid #fff; font-weight: 900; pointer-events: none; z-index: 9999;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.6);
             line-height: 1;
         }
 
@@ -235,7 +238,7 @@
         }
 
         function getPositionKey(b, h1, h2, turn) {
-            return JSON.stringify({b:b, h1:h1.sort(), h2:h2.sort(), t:turn});
+            return JSON.stringify({b:b, h1:h1.slice().sort(), h2:h2.slice().sort(), t:turn});
         }
 
         function recordPosition() {
@@ -281,7 +284,12 @@
             Object.keys(counts).sort().forEach(p => {
                 const d = document.createElement('div');
                 d.className = 'hand-piece' + (selected?.type === 'hand' && selected.piece === p && isTurnP1 === isP1 ? ' selected' : '');
-                d.textContent = PIECE_DATA[p]?.name;
+                
+                const inner = document.createElement('div');
+                inner.className = 'hand-piece-inner';
+                inner.textContent = PIECE_DATA[p]?.name;
+                d.appendChild(inner);
+
                 if(counts[p] > 1) { 
                     const b = document.createElement('div'); b.className='badge'; b.textContent=counts[p]; 
                     d.appendChild(b); 
@@ -432,7 +440,7 @@
 
                 if(target !== ' ') score += SCORES[target.toUpperCase()] * 2;
 
-                // 千日手回避ロジック
+                // 千日手回避ロジックを強化 (2手前から減点)
                 let nb_for_sennichite = board.map(row => [...row]);
                 let nh1 = [...handP1], nh2 = [...handP2];
                 if(m.type === 'move') {
@@ -446,7 +454,7 @@
                 }
                 const nextPosKey = getPositionKey(nb_for_sennichite, nh1, nh2, true);
                 const posCount = history.filter(p => p === nextPosKey).length;
-                if(posCount >= 2) score -= 2000; // 次で3回目なら回避
+                if(posCount >= 1) score -= 2000; // すでに一度出た局面なら大幅減点
 
                 if(aiStyle === 'ibisha') {
                     if(pc === 'R') {
