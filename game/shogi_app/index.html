@@ -79,8 +79,8 @@
         .p-P { width: 42px; height: 46px; font-size: 26px; }
 
         /* マス目強調 */
-        .sq.selected::after { content: ""; position: absolute; inset: 2px; border: 3px solid #ffeb3b; border-radius: 4px; z-index: 3; }
-        .sq.last-move::after { content: ""; position: absolute; inset: 0; background: rgba(255, 87, 34, 0.3); z-index: 1; }
+        .sq.selected::after { content: ""; position: absolute; inset: 2px; border: 3px solid #ffeb3b; border-radius: 4px; z-index: 3; pointer-events: none; }
+        .sq.last-move::after { content: ""; position: absolute; inset: 0; background: rgba(255, 87, 34, 0.3); z-index: 1; pointer-events: none; }
 
         /* 持ち駒 */
         .hand-box {
@@ -228,8 +228,14 @@
                 for(let c=0; c<9; c++) {
                     const sq = document.createElement('div');
                     sq.className = 'sq';
-                    if(selected?.r === r && selected?.c === c) sq.classList.add('selected');
-                    if(lastMove?.tr === r && lastMove?.tc === c) sq.classList.add('last-move');
+                    // 選択枠(黄色)と移動先(オレンジ)の共存
+                    if(selected?.type === 'board' && selected?.r === r && selected?.c === c) sq.classList.add('selected');
+                    if(lastMove?.tr === r && lastMove?.tc === c) {
+                        sq.classList.add('last-move');
+                        // 動かした駒のセルにも黄色の枠を適用
+                        sq.classList.add('selected');
+                    }
+                    
                     const p = board[r][c];
                     if(p !== ' ') {
                         const pEl = document.createElement('div');
@@ -266,17 +272,23 @@
             if(selected) {
                 if(selected.type === 'board') {
                     if(canMove(selected.r, selected.c, r, c, board)) {
-                        const movePiece = board[selected.r][selected.c];
-                        const isPromotable = !movePiece.includes('+') && "PSNLBR".includes(movePiece.toUpperCase()) && (isTurnP1 ? r <= 2 || selected.r <= 2 : r >= 6 || selected.r >= 6);
+                        const fr = selected.r, fc = selected.c;
+                        const movePiece = board[fr][fc];
+                        const isPromotable = !movePiece.includes('+') && "PSNLBR".includes(movePiece.toUpperCase()) && (isTurnP1 ? r <= 2 || fr <= 2 : r >= 6 || fr >= 6);
                         const forcePromote = (movePiece.toUpperCase()==='P' || movePiece.toUpperCase()==='L') && (isTurnP1 ? r===0 : r===8) || (movePiece.toUpperCase()==='N' && (isTurnP1 ? r<=1 : r>=7));
+                        
                         if(forcePromote) {
-                            executeMove(selected.r, selected.c, r, c, true);
+                            executeMove(fr, fc, r, c, true);
                         } else if(isPromotable) {
+                            // 選択解除してからモーダルを出すことでUIの混乱を防ぐ
+                            const currentFr = fr, currentFc = fc, currentTr = r, currentTc = c;
                             showModal("成り", "成りますか？", [
-                                { label: "成る", class: "btn-confirm", action: () => executeMove(selected.r, selected.c, r, c, true) },
-                                { label: "成らない", class: "btn-cancel", action: () => executeMove(selected.r, selected.c, r, c, false) }
+                                { label: "成る", class: "btn-confirm", action: () => executeMove(currentFr, currentFc, currentTr, currentTc, true) },
+                                { label: "成らない", class: "btn-cancel", action: () => executeMove(currentFr, currentFc, currentTr, currentTc, false) }
                             ]);
-                        } else executeMove(selected.r, selected.c, r, c, false);
+                        } else {
+                            executeMove(fr, fc, r, c, false);
+                        }
                         selected = null; return;
                     }
                 } else if(selected.type === 'hand') {
@@ -308,7 +320,10 @@
         }
 
         function endTurn(tr, tc) {
-            lastMove = {tr, tc}; isTurnP1 = !isTurnP1; render(); updateStatus();
+            lastMove = {tr, tc}; 
+            isTurnP1 = !isTurnP1; 
+            render(); 
+            updateStatus();
             if(isCheck(board, isTurnP1)) {
                 if(getLegalMoves(board, isTurnP1).length === 0) {
                     const winner = !isTurnP1 ? "プレイヤー1" : (is1vs1 ? "プレイヤー2" : "AI");
@@ -446,10 +461,13 @@
                 const btn = document.createElement('button');
                 btn.className = `modal-btn ${b.class}`;
                 btn.textContent = b.label;
-                btn.addEventListener('click', (e) => {
+                // タッチ・クリック両方で確実に一度だけ実行
+                const handler = (e) => {
                     e.preventDefault(); e.stopPropagation();
-                    b.action(); over.style.display = 'none';
-                }, { once: true });
+                    b.action(); 
+                    over.style.display = 'none';
+                };
+                btn.onclick = handler;
                 container.appendChild(btn);
             });
             over.style.display = 'flex';
