@@ -157,7 +157,7 @@
         </div>
         <div id="status-p1" class="status-bar"></div>
         <div class="controls">
-            <button onclick="saveKifu()">棋譜保存</button>
+            <button onclick="saveKifu()">棋譜ダウンロード</button>
             <button onclick="backToTitle()" style="background:#3e2723;">タイトルに戻る</button>
         </div>
     </div>
@@ -212,7 +212,7 @@
             document.getElementById('game-screen').classList.add('active');
             
             initGame();
-            modal.show("対局開始", is1vs1 ? "1vs1モード：交互に操作してください" : `AI難易度：${levels[currentLevel-1]}`, [
+            modal.show("対局開始", is1vs1 ? "1vs1モード：交互に操作してください" : `対AI：${levels[currentLevel-1]}`, [
                 { label: "開始", class: "btn-yes", action: () => { if(!isTurnP1 && !is1vs1) setTimeout(aiRoutine, 600); } }
             ]);
         }
@@ -233,7 +233,6 @@
             const p2El = document.getElementById('status-p2');
             
             if (is1vs1) {
-                // 1vs1モード：両サイド考慮
                 if (isTurnP1) {
                     p1El.textContent = "プレイヤー1 の手番です";
                     p2El.textContent = "相手の手番です";
@@ -242,10 +241,9 @@
                     p2El.textContent = "プレイヤー2 の手番です";
                 }
             } else {
-                // AI対局：プレイヤー側の視点のみ
                 if (isTurnP1) {
                     p1El.textContent = "あなたの手番です";
-                    p2El.textContent = ""; // AI側は非表示
+                    p2El.textContent = "";
                 } else {
                     p1El.textContent = "AI思考中...";
                     p2El.textContent = "";
@@ -260,7 +258,6 @@
                     const sq = document.createElement('div'); sq.className = 'sq';
                     if (selected && selected.type === 'board' && selected.r === r && selected.c === c) sq.classList.add('selected');
                     if (lastMove && lastMove.tr === r && lastMove.tc === c) sq.classList.add('last-move');
-                    if (selected && selected.type === 'hand' && !canDrop(selected.piece, r, c, isTurnP1, board)) sq.classList.add('invalid');
                     
                     const p = board[r][c];
                     if (p !== ' ') {
@@ -300,6 +297,12 @@
             if (selected) {
                 if (selected.type === 'board') {
                     if (isValidMoveBasic(selected.r, selected.c, r, c, board)) {
+                        // 自殺手チェック
+                        const tempMove = { type: 'move', fr: selected.r, fc: selected.c, tr: r, tc: c };
+                        if (isCheck(simMove(board, tempMove), isTurnP1)) {
+                            selected = null; render(); return;
+                        }
+
                         const movePiece = board[selected.r][selected.c];
                         if (board[r][c].toUpperCase() === 'K') { executeMove(selected.r, selected.c, r, c, false); return; }
                         
@@ -320,6 +323,10 @@
                     }
                 } else if (selected.type === 'hand') {
                     if (canDrop(selected.piece, r, c, isTurnP1, board)) {
+                        const tempDrop = { type: 'drop', piece: selected.piece, tr: r, tc: c };
+                        if (isCheck(simMove(board, tempDrop), isTurnP1)) {
+                            selected = null; render(); return;
+                        }
                         board[r][c] = isTurnP1 ? selected.piece.toUpperCase() : selected.piece.toLowerCase();
                         (isTurnP1 ? handP1 : handP2).splice((isTurnP1 ? handP1 : handP2).indexOf(selected.piece), 1);
                         lastMove = { tr: r, tc: c }; selected = null; endTurn();
@@ -338,8 +345,8 @@
                 const captured = target.replace('+', '').toUpperCase();
                 isTurnP1 ? handP1.push(captured) : handP2.push(captured);
                 if(target.toUpperCase() === 'K') {
-                    board[tr][tc] = promote ? p+"+" : p; board[fr][fc] = ' ';
-                    endGame(isTurnP1 ? "プレイヤー1 の勝ち！" : "プレイヤー2 の勝ち！"); return;
+                    board[tr][tc] = (promote ? p+"+" : p); board[fr][fc] = ' ';
+                    render(); endGame(isTurnP1 ? "プレイヤー1 の勝ち！" : "プレイヤー2 の勝ち！"); return;
                 }
             }
             if (promote) p += "+";
@@ -351,7 +358,11 @@
             if(isGameOver) return;
             selected = null; isTurnP1 = !isTurnP1; updateStatus(); 
             if (isCheck(board, isTurnP1)) {
-                if (isCheckmate(board, isTurnP1)) { endGame(isTurnP1 ? "詰み（P2の勝利）" : "詰み（P1の勝利）"); return; }
+                if (isCheckmate(board, isTurnP1)) { 
+                    render();
+                    endGame(isTurnP1 ? "プレイヤー2 の勝利（詰み）" : "プレイヤー1 の勝利（詰み）"); 
+                    return; 
+                }
                 showOteNotification();
             }
             render();
@@ -370,10 +381,8 @@
         }
 
         function isCheckmate(b, isP) {
-            if (!isCheck(b, isP)) return false;
             let moves = getLegalMoves(b, isP);
-            for (let m of moves) if (!isCheck(simMove(b, m), isP)) return false;
-            return true;
+            return moves.length === 0;
         }
 
         function canDrop(p, tr, tc, isP, b) {
@@ -415,22 +424,27 @@
         }
 
         function getLegalMoves(b, isP) {
-            let res = [];
+            let rawMoves = [];
             for(let r=0; r<9; r++) for(let c=0; c<9; c++)
                 if(b[r][c] !== ' ' && (b[r][c] === b[r][c].toUpperCase()) === isP)
-                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(isValidMoveBasic(r,c,tr,tc,b)) res.push({type:'move',fr:r,fc:c,tr,tc});
+                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(isValidMoveBasic(r,c,tr,tc,b)) rawMoves.push({type:'move',fr:r,fc:c,tr,tc});
             let h = isP ? handP1 : handP2;
             [...new Set(h)].forEach(p => {
-                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(canDrop(p,tr,tc,isP,b)) res.push({type:'drop',piece:p,tr,tc});
+                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(canDrop(p,tr,tc,isP,b)) rawMoves.push({type:'drop',piece:p,tr,tc});
             });
-            return res;
+            // 自殺手（指した後に自分の王が取られる状態）を除去
+            return rawMoves.filter(m => !isCheck(simMove(b, m), isP));
         }
 
         function simMove(b, m) {
             let n = b.map(r => [...r]);
             if(m.type==='move'){
                 let p = n[m.fr][m.fc];
-                if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && ( (p===p.toUpperCase() && m.tr<=2) || (p!==p.toUpperCase() && m.tr>=6) )) p += "+";
+                if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && ( (p===p.toUpperCase() && m.tr<=2) || (p!==p.toUpperCase() && m.tr>=6) )) {
+                    // 自動成り判定（AIやシミュレーション用。プレイヤーは選択ダイアログがあるため別処理）
+                    const force = ((p.toUpperCase()==='P'||p.toUpperCase()==='L') && (p===p.toUpperCase()?m.tr===0:m.tr===8)) || (p.toUpperCase()==='N' && (p===p.toUpperCase()?m.tr<=1:m.tr>=7));
+                    if(force) p += "+";
+                }
                 n[m.tr][m.tc]=p; n[m.fr][m.fc]=' ';
             } else n[m.tr][m.tc] = isTurnP1 ? m.piece.toUpperCase() : m.piece.toLowerCase();
             return n;
@@ -440,19 +454,23 @@
             if(isGameOver || is1vs1) return;
             let moves = getLegalMoves(board, false);
             if (moves.length === 0) { endGame("AIが投了しました"); return; }
-            let best = minimax(board, (currentLevel>=11?3:2), -Infinity, Infinity, false).move;
+            
+            // 王を取れる手があれば即実行
+            let winMove = moves.find(m => board[m.tr][m.tc].toUpperCase() === 'K');
+            let best;
+            if (winMove) best = winMove;
+            else best = minimax(board, (currentLevel>=11?3:2), -Infinity, Infinity, false).move;
+            
+            if (!best) best = moves[0];
+
             if (best.type === 'move') {
-                let p = board[best.fr][best.fc];
-                const target = board[best.tr][best.tc];
-                if (target !== ' ') handP2.push(target.replace('+', '').toUpperCase());
-                if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && (best.tr >= 6)) p += "+";
-                board[best.tr][best.tc] = p; board[best.fr][best.fc] = ' ';
+                executeMove(best.fr, best.fc, best.tr, best.tc, (best.tr >= 6 && !board[best.fr][best.fc].includes('+')));
             } else {
                 board[best.tr][best.tc] = best.piece.toLowerCase();
                 handP2.splice(handP2.indexOf(best.piece), 1);
+                lastMove = { tr: best.tr, tc: best.tc };
+                endTurn();
             }
-            lastMove = { tr: best.tr, tc: best.tc };
-            endTurn();
         }
 
         function minimax(b, d, a, bt, isM) {
