@@ -48,7 +48,6 @@
         }
 
         .status-bar { font-size: 1.1rem; color: var(--accent); font-weight: bold; height: 40px; display: flex; align-items: center; transition: all 0.3s; white-space: nowrap; }
-        #status-p2 { transform: rotate(180deg); }
         .active-turn { text-shadow: 0 0 10px var(--accent); color: white; scale: 1.1; }
 
         #board-container { 
@@ -84,9 +83,14 @@
             background: var(--piece-bg); width: 36px; height: 40px; display: flex; justify-content: center; align-items: center;
             cursor: pointer; position: relative; font-weight: bold; font-size: 22px; color: var(--piece-text);
             clip-path: polygon(50% 0%, 93% 18%, 100% 100%, 0% 100%, 7% 18%);
+            overflow: visible; /* 数字を見せるため */
         }
         .hand-piece.selected { outline: 3px solid #ffeb3b; box-shadow: 0 0 15px #ffeb3b; }
-        .badge { position: absolute; bottom: -5px; right: -5px; background: #d32f2f; color: white; font-size: 10px; min-width: 14px; border-radius: 10px; text-align: center; border: 1px solid white; }
+        .badge { 
+            position: absolute; top: -8px; right: -10px; background: #d32f2f; color: white; 
+            font-size: 12px; min-width: 18px; height: 18px; line-height: 18px; border-radius: 50%; 
+            text-align: center; border: 1.5px solid white; font-weight: bold; z-index: 10;
+        }
 
         #modal-overlay {
             position: fixed; inset: 0; background: var(--overlay); display: none;
@@ -107,7 +111,6 @@
         input:checked + .switch { background: var(--accent); }
         input:checked + .switch::after { left: 26px; }
 
-        /* 王手通知の完全中央配置 */
         #ote-notification {
             position: fixed; top: 50%; left: 50%; 
             transform: translate(-50%, -50%);
@@ -160,9 +163,9 @@
 
     <div id="game-screen" class="screen">
         <div id="status-p2" class="status-bar"></div>
-        <div class="hand-box" id="hand-p2-container" style="transform: rotate(180deg);"><div id="hand-p2" style="display:flex; gap:6px;"></div></div>
+        <div class="hand-box" id="hand-p2-container" style="transform: rotate(180deg);"><div id="hand-p2" style="display:flex; gap:12px;"></div></div>
         <div id="board-container"><div id="board"></div></div>
-        <div class="hand-box" id="hand-p1-container"><div id="hand-p1" style="display:flex; gap:6px;"></div></div>
+        <div class="hand-box" id="hand-p1-container"><div id="hand-p1" style="display:flex; gap:12px;"></div></div>
         <div id="status-p1" class="status-bar"></div>
         <div style="margin-top:20px; display:flex; gap:15px;">
             <button onclick="downloadKifu()" style="background:#444; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">棋譜DL</button>
@@ -178,7 +181,7 @@
             'R+': {name:'龍', size:'p-R'}, 'B+': {name:'馬', size:'p-B'}, 'S+': {name:'全', size:'p-S'},
             'N+': {name:'圭', size:'p-N'}, 'L+': {name:'杏', size:'p-L'}, 'P+': {name:'と', size:'p-P'}
         };
-        const SCORES = { 'K':10000, 'R':1000, 'B':900, 'G':600, 'S':500, 'N':400, 'L':300, 'P':100, 'R+':1500, 'B+':1300, 'S+':700, 'N+':700, 'L+':700, 'P+':700 };
+        const SCORES = { 'K':50000, 'R':1000, 'B':900, 'G':600, 'S':500, 'N':400, 'L':300, 'P':100, 'R+':1500, 'B+':1300, 'S+':700, 'N+':700, 'L+':700, 'P+':700 };
 
         let board = [], handP1 = [], handP2 = [], kifu = [];
         let isTurnP1 = true, isGameOver = false, selected = null, is1vs1 = false, level = 20, lastMove = null;
@@ -200,7 +203,7 @@
             is1vs1 = document.getElementById('mode-1vs1').checked;
             level = parseInt(lvSelect.value);
             const first = document.getElementById('first-move').value;
-            isTurnP1 = first === 'p1' ? true : (first === 'p2' ? false : Math.random() < 0.5);
+            isTurnP1 = (first === 'p1') ? true : (first === 'p2' ? false : Math.random() < 0.5);
             initGame();
             document.getElementById('home-screen').classList.remove('active');
             document.getElementById('game-screen').classList.add('active');
@@ -222,7 +225,6 @@
                     sq.className = 'sq';
                     if(selected?.type === 'board' && selected?.r === r && selected?.c === c) sq.classList.add('selected');
                     if(lastMove?.tr === r && lastMove?.tc === c) sq.classList.add('last-move');
-                    
                     const p = board[r][c];
                     if(p !== ' ') {
                         const pEl = document.createElement('div');
@@ -259,24 +261,18 @@
             if(selected) {
                 if(selected.type === 'board') {
                     if(canMove(selected.r, selected.c, r, c, board)) {
-                        const fr = selected.r, fc = selected.c;
-                        const movePiece = board[fr][fc];
+                        const fr = selected.r, fc = selected.c, movePiece = board[fr][fc];
                         const isPromotable = !movePiece.includes('+') && "PSNLBR".includes(movePiece.toUpperCase()) && (isTurnP1 ? r <= 2 || fr <= 2 : r >= 6 || fr >= 6);
                         const forcePromote = (movePiece.toUpperCase()==='P' || movePiece.toUpperCase()==='L') && (isTurnP1 ? r===0 : r===8) || (movePiece.toUpperCase()==='N' && (isTurnP1 ? r<=1 : r>=7));
-                        
                         const currentFr = fr, currentFc = fc, currentTr = r, currentTc = c;
                         selected = null; 
-
-                        if(forcePromote) {
-                            executeMove(currentFr, currentFc, currentTr, currentTc, true);
-                        } else if(isPromotable) {
+                        if(forcePromote) executeMove(currentFr, currentFc, currentTr, currentTc, true);
+                        else if(isPromotable) {
                             showModal("成り", "成りますか？", [
                                 { label: "成る", class: "btn-confirm", action: () => executeMove(currentFr, currentFc, currentTr, currentTc, true) },
                                 { label: "成らない", class: "btn-cancel", action: () => executeMove(currentFr, currentFc, currentTr, currentTc, false) }
                             ]);
-                        } else {
-                            executeMove(currentFr, currentFc, currentTr, currentTc, false);
-                        }
+                        } else executeMove(currentFr, currentFc, currentTr, currentTc, false);
                         return;
                     }
                 } else if(selected.type === 'hand') {
@@ -284,9 +280,7 @@
                         board[r][c] = isTurnP1 ? selected.piece : selected.piece.toLowerCase();
                         const h = isTurnP1 ? handP1 : handP2; h.splice(h.indexOf(selected.piece), 1);
                         kifu.push(`打${9-c}${r+1}${PIECE_DATA[selected.piece].name}`);
-                        selected = null;
-                        endTurn(r, c);
-                        return;
+                        selected = null; endTurn(r, c); return;
                     }
                 }
                 selected = null; render();
@@ -298,6 +292,11 @@
         function executeMove(fr, fc, tr, tc, promote) {
             let p = board[fr][fc];
             const target = board[tr][tc];
+            if(target.toUpperCase() === 'K') {
+                board[tr][tc] = promote ? p + '+' : p; board[fr][fc] = ' ';
+                render(); finishGame(isTurnP1 ? "プレイヤー1 の勝利！" : (is1vs1 ? "プレイヤー2 の勝利！" : "AI の勝利！"));
+                return;
+            }
             if(target !== ' ') {
                 const cap = target.replace('+', '').toUpperCase();
                 (isTurnP1 ? handP1 : handP2).push(cap);
@@ -309,14 +308,11 @@
         }
 
         function endTurn(tr, tc) {
-            lastMove = {tr, tc}; 
-            isTurnP1 = !isTurnP1; 
-            render(); 
-            updateStatus();
+            lastMove = {tr, tc}; isTurnP1 = !isTurnP1; render(); updateStatus();
             if(isCheck(board, isTurnP1)) {
                 if(getLegalMoves(board, isTurnP1).length === 0) {
-                    const winner = !isTurnP1 ? "プレイヤー1" : (is1vs1 ? "プレイヤー2" : "AI");
-                    finishGame(`${winner} の勝利！`); return;
+                    finishGame(!isTurnP1 ? "プレイヤー1 の勝利！" : (is1vs1 ? "プレイヤー2" : "AI") + " の勝利！");
+                    return;
                 }
                 flashOte();
             }
@@ -377,47 +373,55 @@
             for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
                 if(b[r][c] !== ' ' && (b[r][c] === b[r][c].toUpperCase()) === isP1) {
                     for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) {
-                        if(canMove(r, c, tr, tc, b)) {
-                            let nb = b.map(row => [...row]); nb[tr][tc] = nb[r][c]; nb[r][c] = ' ';
-                            if(!isCheck(nb, isP1)) moves.push({type:'move', fr:r, fc:c, tr, tc});
-                        }
+                        if(canMove(r, c, tr, tc, b)) moves.push({type:'move', fr:r, fc:c, tr, tc});
                     }
                 }
             }
             const h = isP1 ? handP1 : handP2;
             [...new Set(h)].forEach(p => {
-                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) {
-                    if(canDrop(p, tr, tc, isP1, b)) {
-                        let nb = b.map(row => [...row]); nb[tr][tc] = isP1 ? p : p.toLowerCase();
-                        if(!isCheck(nb, isP1)) moves.push({type:'drop', piece:p, tr, tc});
-                    }
-                }
+                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(canDrop(p, tr, tc, isP1, b)) moves.push({type:'drop', piece:p, tr, tc});
             });
             return moves;
         }
 
+        // AI 思考ロジック改良
         function aiAction() {
             if(isGameOver) return;
             const moves = getLegalMoves(board, false);
             if(moves.length === 0) { finishGame("プレイヤー1 の勝利！"); return; }
-            let bestMove = null; let maxScore = -Infinity;
+            
+            let bestMove = null;
+            // 10級(level 1)はほぼランダム。十段(level 20)は評価値に基づき最善手。
+            const randomness = Math.max(0, (20 - level) * 10);
+            let maxScore = -Infinity;
+
             moves.forEach(m => {
-                let s = Math.random() * 10;
+                let score = Math.random() * randomness;
+                const target = m.type === 'move' ? board[m.tr][m.tc] : ' ';
+                
+                // 基本スコア：駒を取る、成る
+                if(target !== ' ') score += SCORES[target.toUpperCase()];
                 if(m.type === 'move') {
-                    const target = board[m.tr][m.tc];
-                    if(target !== ' ') s += SCORES[target.toUpperCase()];
-                    if(m.tr >= 6) s += 30;
-                } else if(m.tr >= 6) s += 20;
-                let nb = board.map(row => [...row]);
-                if(m.type === 'move') { nb[m.tr][m.tc] = nb[m.fr][m.fc]; nb[m.fr][m.fc] = ' '; }
-                else { nb[m.tr][m.tc] = m.piece.toLowerCase(); }
-                if(isCheck(nb, true)) s += 50;
-                if(s > maxScore) { maxScore = s; bestMove = m; }
+                    const p = board[m.fr][m.fc];
+                    if(!p.includes('+') && m.tr >= 6) score += 50; // 成りへの接近
+                }
+
+                // 十段に近いほど守りと王手を重視
+                if(level > 5) {
+                    let nb = board.map(row => [...row]);
+                    if(m.type === 'move') { nb[m.tr][m.tc] = nb[m.fr][m.fc]; nb[m.fr][m.fc] = ' '; }
+                    else { nb[m.tr][m.tc] = m.piece.toLowerCase(); }
+                    if(isCheck(nb, true)) score += 100; // 王手
+                    if(isCheck(nb, false)) score -= 200; // 自玉が王手される手は避ける
+                }
+
+                if(score > maxScore) { maxScore = score; bestMove = m; }
             });
+
             if(bestMove.type === 'move') {
                 const p = board[bestMove.fr][bestMove.fc];
                 const force = (p === 'p' || p === 'l') && bestMove.tr === 8 || (p === 'n' && bestMove.tr >= 7);
-                const autoPromote = !p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && (bestMove.tr >= 6) && (Math.random() > 0.2 || force);
+                const autoPromote = !p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && (bestMove.tr >= 6) && (Math.random() > (randomness/200) || force);
                 executeMove(bestMove.fr, bestMove.fc, bestMove.tr, bestMove.tc, autoPromote);
             } else {
                 board[bestMove.tr][bestMove.tc] = bestMove.piece.toLowerCase();
@@ -428,16 +432,14 @@
         }
 
         function updateStatus() {
-            const s1 = document.getElementById('status-p1'); const s2 = document.getElementById('status-p2');
+            const s1 = document.getElementById('status-p1'), s2 = document.getElementById('status-p2');
             s1.className = 'status-bar' + (isTurnP1 ? ' active-turn' : '');
             s2.className = 'status-bar' + (!isTurnP1 ? ' active-turn' : '');
-            
             if(is1vs1) {
                 s2.style.transform = "rotate(180deg)";
                 s1.textContent = isTurnP1 ? "プレイヤー1 の手番" : "";
                 s2.textContent = !isTurnP1 ? "プレイヤー2 の手番" : "";
             } else {
-                // AIモード時は上側のステータスも自分に向け、AIの情報を表示
                 s2.style.transform = "rotate(0deg)";
                 s1.textContent = isTurnP1 ? "あなたの手番" : "";
                 s2.textContent = !isTurnP1 ? "AI 思考中..." : "";
@@ -452,13 +454,8 @@
             container.innerHTML = '';
             btns.forEach(b => {
                 const btn = document.createElement('button');
-                btn.className = `modal-btn ${b.class}`;
-                btn.textContent = b.label;
-                btn.onclick = (e) => {
-                    e.preventDefault(); e.stopPropagation();
-                    b.action(); 
-                    over.style.display = 'none';
-                };
+                btn.className = `modal-btn ${b.class}`; btn.textContent = b.label;
+                btn.onclick = (e) => { e.preventDefault(); b.action(); over.style.display = 'none'; };
                 container.appendChild(btn);
             });
             over.style.display = 'flex';
