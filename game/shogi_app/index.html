@@ -86,13 +86,15 @@
             overflow: visible; flex-shrink: 0;
         }
         .hand-piece.selected { outline: 3px solid #ffeb3b; box-shadow: 0 0 15px #ffeb3b; }
+        
         .badge { 
-            position: absolute; top: 0; right: 0; transform: translate(40%, -40%);
+            position: absolute; top: -5px; right: -8px;
             background: #d32f2f; color: white; 
-            font-size: 13px; min-width: 20px; height: 20px; border-radius: 10px;
+            font-size: 14px; min-width: 22px; height: 22px; border-radius: 11px;
             display: flex; align-items: center; justify-content: center;
-            border: 2px solid #fff; font-weight: 900; pointer-events: none; z-index: 100;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border: 2px solid #fff; font-weight: 900; pointer-events: none; z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            line-height: 1;
         }
 
         #modal-overlay {
@@ -232,8 +234,12 @@
             handP1 = []; handP2 = []; kifu = []; history = []; isGameOver = false; lastMove = null;
         }
 
+        function getPositionKey(b, h1, h2, turn) {
+            return JSON.stringify({b:b, h1:h1.sort(), h2:h2.sort(), t:turn});
+        }
+
         function recordPosition() {
-            const pos = JSON.stringify({b:board, h1:handP1.sort(), h2:handP2.sort(), t:isTurnP1});
+            const pos = getPositionKey(board, handP1, handP2, isTurnP1);
             history.push(pos);
             checkSennichite(pos);
         }
@@ -425,6 +431,22 @@
                 const tr = m.tr, tc = m.tc;
 
                 if(target !== ' ') score += SCORES[target.toUpperCase()] * 2;
+
+                // 千日手回避ロジック
+                let nb_for_sennichite = board.map(row => [...row]);
+                let nh1 = [...handP1], nh2 = [...handP2];
+                if(m.type === 'move') {
+                    const capture = nb_for_sennichite[tr][tc];
+                    if(capture !== ' ') nh2.push(capture.replace('+','').toUpperCase());
+                    nb_for_sennichite[tr][tc] = nb_for_sennichite[m.fr][m.fc];
+                    nb_for_sennichite[m.fr][m.fc] = ' ';
+                } else {
+                    nb_for_sennichite[tr][tc] = m.piece.toLowerCase();
+                    nh2.splice(nh2.indexOf(m.piece), 1);
+                }
+                const nextPosKey = getPositionKey(nb_for_sennichite, nh1, nh2, true);
+                const posCount = history.filter(p => p === nextPosKey).length;
+                if(posCount >= 2) score -= 2000; // 次で3回目なら回避
 
                 if(aiStyle === 'ibisha') {
                     if(pc === 'R') {
