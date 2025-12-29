@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>将棋 AI - 20段階難易度</title>
+    <title>将棋 AI</title>
     <style>
         :root {
             --board-color: #e3c878;
@@ -11,19 +11,14 @@
             --piece-text: #1a1a1a;
             --promoted-text: #d32f2f;
             --overlay: rgba(0, 0, 0, 0.7);
+            --invalid-sq: rgba(0, 0, 0, 0.3); /* 置けない場所のマスク */
         }
 
         body {
             font-family: "Helvetica Neue", Arial, sans-serif;
-            background-color: #2b1d1a;
-            color: white;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            overflow: hidden;
+            background-color: #2b1d1a; color: white; margin: 0;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            min-height: 100vh; overflow: hidden;
         }
 
         .screen { display: none; flex-direction: column; align-items: center; }
@@ -32,15 +27,11 @@
         /* モーダル */
         #modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--overlay);
-            display: none; justify-content: center; align-items: center;
-            z-index: 100;
+            background: var(--overlay); display: none; justify-content: center; align-items: center; z-index: 100;
         }
         .modal-content {
-            background: #fdf5e6; color: #3e2723;
-            padding: 30px; border-radius: 12px;
-            text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            min-width: 280px;
+            background: #fdf5e6; color: #3e2723; padding: 30px; border-radius: 12px;
+            text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); min-width: 280px;
         }
         .modal-btns { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
         .modal-btn { padding: 10px 25px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
@@ -55,7 +46,7 @@
         .option-group label { color: #e3c878; font-size: 0.9rem; margin-bottom: 5px; display: block; }
         select { width: 100%; padding: 12px; background: #fdf5e6; border-radius: 6px; font-size: 1rem; color: #3e2723; }
 
-        /* ゲームレイアウト */
+        /* ゲーム盤面 */
         .game-container { display: flex; flex-direction: column; align-items: center; gap: 10px; }
         .hand-box {
             background: #d7ccc8; color: #3e2723; padding: 8px 15px; border-radius: 6px;
@@ -65,25 +56,24 @@
         #board-container { background: var(--board-shadow); padding: 12px; border-radius: 4px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
         #board { display: grid; grid-template-columns: repeat(9, 62px); grid-template-rows: repeat(9, 64px); gap: 1px; background: #333; }
         .sq { width: 62px; height: 64px; background-color: var(--board-color); display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; }
+        
+        /* 置けないマスの視覚化 */
+        .sq.invalid { background-color: #8d7a50; cursor: not-allowed; }
+        .sq.invalid::after { content: ""; position: absolute; width: 100%; height: 100%; background: var(--invalid-sq); z-index: 5; }
 
-        /* 駒 */
         .piece {
             background: var(--piece-bg); color: var(--piece-text); display: flex; justify-content: center; align-items: center;
             font-family: "serif"; font-weight: 900; clip-path: polygon(50% 0%, 93% 18%, 100% 100%, 0% 100%, 7% 18%);
-            box-shadow: inset 0 -4px 4px rgba(0,0,0,0.15); line-height: 1; pointer-events: none;
+            box-shadow: inset 0 -4px 4px rgba(0,0,0,0.15); line-height: 1; pointer-events: none; z-index: 2;
         }
-        .p-K { width: 57px; height: 61px; font-size: 42px; } 
-        .p-R, .p-B { width: 53px; height: 57px; font-size: 38px; }
-        .p-G, .p-S { width: 50px; height: 54px; font-size: 36px; }
-        .p-N, .p-L { width: 46px; height: 50px; font-size: 32px; }
+        .p-K { width: 57px; height: 61px; font-size: 42px; } .p-R, .p-B { width: 53px; height: 57px; font-size: 38px; }
+        .p-G, .p-S { width: 50px; height: 54px; font-size: 36px; } .p-N, .p-L { width: 46px; height: 50px; font-size: 32px; }
         .p-P { width: 42px; height: 46px; font-size: 28px; }
-        .piece.ai { transform: rotate(180deg); }
-        .piece.promoted { color: var(--promoted-text); }
+        .piece.ai { transform: rotate(180deg); } .piece.promoted { color: var(--promoted-text); }
 
-        .sq.selected::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(255, 235, 59, 0.4); }
-        .sq.last-move::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(255, 87, 34, 0.3); }
+        .sq.selected::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(255, 235, 59, 0.4); z-index: 1; }
+        .sq.last-move::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(255, 87, 34, 0.3); z-index: 1; }
 
-        /* 持ち駒の駒スタイル */
         .hand-piece {
             background: var(--piece-bg); clip-path: polygon(50% 0%, 92% 18%, 100% 100%, 0% 100%, 8% 18%);
             display: flex; justify-content: center; align-items: center; color: var(--piece-text);
@@ -153,13 +143,14 @@
         let board = [], handPlayer = [], handAI = [], kifu = [];
         let selected = null, isTurnPlayer = true, isGameOver = false, currentLevel = 1, lastMove = null;
 
-        // 難易度選択の生成 (10級を下に、十段を上に表示)
+        // 難易度選択の生成 (10級をデフォルト選択)
         const levels = ["10級","9級","8級","7級","6級","5級","4級","3級","2級","1級","初段","二段","三段","四段","五段","六段","七段","八段","九段","十段"];
         const levelSelect = document.getElementById('ai-level');
         [...levels].reverse().forEach((l) => {
             const opt = document.createElement('option');
             opt.value = levels.indexOf(l) + 1;
             opt.textContent = l;
+            if(l === "10級") opt.selected = true; // 10級をデフォルトに
             levelSelect.appendChild(opt);
         });
 
@@ -207,6 +198,14 @@
                     const sq = document.createElement('div'); sq.className = 'sq';
                     if (selected && selected.type === 'board' && selected.r === r && selected.c === c) sq.classList.add('selected');
                     if (lastMove && lastMove.tr === r && lastMove.tc === c) sq.classList.add('last-move');
+                    
+                    // 置けない場所のハイライト（持ち駒選択時）
+                    if (selected && selected.type === 'hand') {
+                        if (!canDrop(selected.piece, r, c, true, board)) {
+                            sq.classList.add('invalid');
+                        }
+                    }
+
                     const p = board[r][c];
                     if (p !== ' ') {
                         const pEl = document.createElement('div');
@@ -230,12 +229,10 @@
                 div.className = 'hand-piece' + (isP && selected && selected.type === 'hand' && selected.piece === p ? ' selected' : '');
                 div.textContent = PIECES[p];
                 if (counts[p] > 1) { const b = document.createElement('div'); b.className = 'badge'; b.textContent = counts[p]; div.appendChild(b); }
-                if (isP) div.onclick = (e) => { e.stopPropagation(); selectHand(p); };
+                if (isP) div.onclick = (e) => { e.stopPropagation(); selected = (selected && selected.piece === p) ? null : { type: 'hand', piece: p }; render(); };
                 container.appendChild(div);
             });
         }
-
-        function selectHand(p) { if (!isTurnPlayer || isGameOver) return; selected = (selected && selected.piece === p) ? null : { type: 'hand', piece: p }; render(); }
 
         function onSquareClick(r, c) {
             if (!isTurnPlayer || isGameOver) return;
@@ -253,7 +250,7 @@
                 } else if (selected.type === 'hand') {
                     if (canDrop(selected.piece, r, c, true, board)) {
                         board[r][c] = selected.piece.toUpperCase();
-                        recordKifu("プレイヤー", "持ち駒", `${9-c}一二三四五六七八九`[r+1], PIECES[selected.piece]);
+                        recordKifu("プレイヤー", "打", `${9-c}${r+1}`, PIECES[selected.piece]);
                         handPlayer.splice(handPlayer.indexOf(selected.piece), 1);
                         lastMove = { tr: r, tc: c }; selected = null; endTurn();
                     }
@@ -263,6 +260,18 @@
                 selected = { type: 'board', r, c };
             }
             render();
+        }
+
+        function canDrop(p, tr, tc, isP, b) {
+            if (b[tr][tc] !== ' ') return false;
+            // 行き所のない駒
+            if ((p==='P'||p==='L') && (isP ? tr===0 : tr===8)) return false;
+            if (p==='N' && (isP ? tr<=1 : tr>=7)) return false;
+            // 二歩のチェック
+            if (p==='P') {
+                for(let r=0; r<9; r++) if(b[r][tc]===(isP?'P':'p')) return false;
+            }
+            return true;
         }
 
         function executeMove(fr, fc, tr, tc, promote) {
@@ -297,24 +306,21 @@
                 board[best.tr][best.tc] = p; board[best.fr][best.fc] = ' ';
             } else {
                 board[best.tr][best.tc] = best.piece.toLowerCase();
-                recordKifu("AI", "持ち駒", `${9-best.tc}${best.tr+1}`, PIECES[best.piece]);
+                recordKifu("AI", "打", `${9-best.tc}${best.tr+1}`, PIECES[best.piece]);
                 handAI.splice(handAI.indexOf(best.piece), 1);
             }
             lastMove = { tr: best.tr, tc: best.tc }; endTurn();
         }
 
         function recordKifu(who, from, to, piece) { kifu.push([who, from, to, piece]); }
-
         function saveKifu() {
             let csv = kifu.map(row => row.join(",")).join("\n");
-            let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            let blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
             let link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = "shogi_kifu.csv";
-            link.click();
+            link.download = "shogi_kifu.csv"; link.click();
         }
 
-        // --- 以下AIロジック（ミニマックス/評価/バリデーション） ---
         function minimax(b, depth, alpha, beta, isMax) {
             if (depth === 0) return { score: evaluate(b) };
             let moves = getLegalMoves(b, isMax);
@@ -343,7 +349,7 @@
             let s = 0;
             for(let r=0; r<9; r++) for(let c=0; c<9; c++){
                 const p = b[r][c]; if(p===' ') continue;
-                let v = SCORE[p.toUpperCase()] + (p === p.toUpperCase() ? (8-r)*currentLevel : r*currentLevel);
+                let v = SCORE[p.toUpperCase()] + (p === p.toUpperCase() ? (8-r)*2 : r*2);
                 s += (p === p.toUpperCase()) ? v : -v;
             }
             handPlayer.forEach(p => s += SCORE[p] * 0.9);
@@ -411,14 +417,6 @@
             const sr = Math.sign(tr-fr), sc = Math.sign(tc-fc);
             let r = fr+sr, c = fc+sc;
             while(r!==tr || c!==tc){ if(b[r][c]!==' ') return false; r+=sr; c+=sc; }
-            return true;
-        }
-
-        function canDrop(p, tr, tc, isP, b) {
-            if (b[tr][tc] !== ' ') return false;
-            if ((p==='P'||p==='L') && (isP ? tr===0 : tr===8)) return false;
-            if (p==='N' && (isP ? tr<=1 : tr>=7)) return false;
-            if (p==='P') for(let r=0; r<9; r++) if(b[r][tc]===(isP?'P':'p')) return false;
             return true;
         }
 
