@@ -13,7 +13,7 @@
         }
 
         body {
-            font-family: "Sawarabi Mincho", serif;
+            font-family: "Helvetica Neue", "Arial", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Meiryo", sans-serif;
             background-color: #2b1d1a;
             color: white;
             margin: 0;
@@ -22,17 +22,44 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            overflow-x: hidden;
         }
 
+        /* 画面切り替え */
         .screen { display: none; flex-direction: column; align-items: center; }
         .screen.active { display: flex; }
 
-        /* レイアウト構成：縦に並べる */
+        /* 設定画面のデザイン */
+        .menu-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 340px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .option-group { margin-bottom: 25px; text-align: left; }
+        .option-group label { font-size: 0.9rem; margin-bottom: 8px; display: block; color: #e3c878; }
+        
+        select { 
+            width: 100%; 
+            padding: 12px; 
+            background: #fdf5e6;
+            border: none;
+            border-radius: 6px; 
+            font-size: 1rem;
+            color: #3e2723;
+            cursor: pointer;
+        }
+
+        /* ゲーム画面レイアウト */
         .game-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
         }
 
         /* 持ち駒エリア */
@@ -40,30 +67,31 @@
             background: #d7ccc8;
             color: #3e2723;
             padding: 8px 15px;
-            border-radius: 5px;
-            min-width: 560px;
+            border-radius: 6px;
+            width: 558px;
             min-height: 60px;
             display: flex;
             align-items: center;
             gap: 15px;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.25);
+            border: 1px solid #bcaaa4;
         }
-        .hand-label { font-size: 0.8rem; font-weight: bold; opacity: 0.7; width: 80px; }
-        .hand-pieces { display: flex; flex-wrap: wrap; gap: 8px; flex-grow: 1; }
+        .hand-label { font-size: 0.75rem; font-weight: bold; width: 70px; color: #5d4037; }
+        .hand-pieces { display: flex; flex-wrap: wrap; gap: 6px; flex-grow: 1; }
 
-        /* 盤面 */
+        /* 将棋盤 */
         #board-container {
             background: var(--board-shadow);
-            padding: 10px;
-            border-radius: 2px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+            padding: 12px;
+            border-radius: 4px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
         }
         #board {
             display: grid;
             grid-template-columns: repeat(9, 62px);
             grid-template-rows: repeat(9, 64px);
             gap: 1px;
-            background: #222;
+            background: #333; /* 筋目 */
         }
         .sq {
             width: 62px; height: 64px;
@@ -72,87 +100,98 @@
             cursor: pointer; position: relative;
         }
 
-        /* 駒のデザイン：文字サイズを大きく調整 */
+        /* 駒のデザイン修正：文字サイズをさらに拡大 */
         .piece {
             background: var(--piece-bg);
             color: var(--piece-text);
             display: flex;
             justify-content: center;
             align-items: center;
-            padding-top: 5px; /* 先端の余白 */
-            font-weight: bold;
+            font-family: "serif";
+            font-weight: 900;
             box-sizing: border-box;
-            clip-path: polygon(50% 0%, 92% 18%, 100% 100%, 0% 100%, 8% 18%);
-            box-shadow: inset 0 -3px 5px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
+            clip-path: polygon(50% 0%, 93% 18%, 100% 100%, 0% 100%, 7% 18%);
+            box-shadow: inset 0 -4px 4px rgba(0,0,0,0.15);
             z-index: 2;
+            line-height: 1;
         }
 
-        /* サイズと文字の黄金比を再計算 */
-        .p-K { width: 57px; height: 61px; font-size: 38px; } 
-        .p-R, .p-B { width: 53px; height: 57px; font-size: 34px; }
-        .p-G, .p-S { width: 50px; height: 54px; font-size: 32px; }
-        .p-N, .p-L { width: 46px; height: 50px; font-size: 28px; }
-        .p-P { width: 42px; height: 46px; font-size: 26px; }
+        /* サイズ別文字調整 */
+        .p-K { width: 57px; height: 61px; font-size: 42px; } 
+        .p-R, .p-B { width: 53px; height: 57px; font-size: 38px; }
+        .p-G, .p-S { width: 50px; height: 54px; font-size: 36px; }
+        .p-N, .p-L { width: 46px; height: 50px; font-size: 32px; }
+        .p-P { width: 42px; height: 46px; font-size: 28px; }
 
         .piece.ai { transform: rotate(180deg); }
         .piece.promoted { color: var(--promoted-text); }
 
+        /* 持ち駒の駒 */
         .hand-piece {
             background: var(--piece-bg);
             clip-path: polygon(50% 0%, 92% 18%, 100% 100%, 0% 100%, 8% 18%);
             display: flex; justify-content: center; align-items: center;
             color: var(--piece-text);
-            width: 40px; height: 44px; font-size: 22px;
+            width: 42px; height: 46px; font-size: 26px;
             position: relative; cursor: pointer;
+            font-weight: bold;
         }
-        .hand-piece.selected { background: #fff176; outline: 2px solid #f44336; }
+        .hand-piece.selected { background: #fff176; outline: 3px solid #f44336; }
 
-        /* 設定画面 */
-        .menu-card {
-            background: rgba(255,255,255,0.1);
-            padding: 40px;
-            border-radius: 15px;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
-            width: 320px;
+        /* ハイライト */
+        .sq.selected::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(255, 235, 59, 0.4); z-index: 1; }
+        .sq.last-move::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(255, 87, 34, 0.3); z-index: 1; }
+
+        #status { font-size: 1.6rem; margin-bottom: 15px; color: #e3c878; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .controls { margin-top: 20px; display: flex; gap: 15px; }
+        
+        button { 
+            padding: 12px 30px; 
+            background: #5d4037; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            font-size: 1rem;
+            transition: background 0.2s;
         }
-        .option-group { margin-bottom: 20px; text-align: left; }
-        select { width: 100%; padding: 10px; margin-top: 5px; border-radius: 4px; }
-
-        #status { font-size: 1.4rem; margin-bottom: 10px; color: #e3c878; }
-        .controls { margin-top: 15px; display: flex; gap: 10px; }
-        button { padding: 10px 20px; background: #5d4037; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
-        .badge { position: absolute; bottom: -2px; right: -2px; background: #d32f2f; color: white; font-size: 10px; padding: 1px 4px; border-radius: 6px; }
+        button:hover { background: #8d6e63; }
+        
+        .badge { 
+            position: absolute; bottom: -4px; right: -4px; 
+            background: #d32f2f; color: white; font-size: 11px; 
+            padding: 1px 5px; border-radius: 10px; border: 1px solid white;
+        }
     </style>
 </head>
 <body>
 
     <div id="home-screen" class="screen active">
         <div class="menu-card">
-            <h1 style="letter-spacing: 5px;">将棋 AI</h1>
+            <h1 style="letter-spacing: 6px; margin-top: 0;">将棋 AI</h1>
             <div class="option-group">
-                <label>難易度</label>
+                <label>難易度設定</label>
                 <select id="ai-level">
-                    <option value="1">初級</option>
-                    <option value="2">中級</option>
-                    <option value="3" selected>名人</option>
+                    <option value="1">初級 (ランダム)</option>
+                    <option value="2">中級 (駒得優先)</option>
+                    <option value="3" selected>名人 (思考探索)</option>
                 </select>
             </div>
             <div class="option-group">
-                <label>先手選択</label>
+                <label>手番の選択</label>
                 <select id="first-move">
-                    <option value="player">あなた</option>
-                    <option value="ai">AI</option>
+                    <option value="player">あなた (先手)</option>
+                    <option value="ai">AI (先手)</option>
                     <option value="random">ランダム</option>
                 </select>
             </div>
-            <button onclick="startGame()" style="width: 100%;">対局開始</button>
+            <button onclick="startGame()" style="width: 100%; padding: 15px;">対局開始</button>
         </div>
     </div>
 
     <div id="game-screen" class="screen">
-        <div id="status">対局中...</div>
+        <div id="status">対局準備中...</div>
         
         <div class="game-container">
             <div class="hand-box">
@@ -171,8 +210,7 @@
         </div>
 
         <div class="controls">
-            <button onclick="exportCSV()">棋譜保存</button>
-            <button onclick="location.reload()" style="background:#3e2723;">タイトルへ</button>
+            <button onclick="location.reload()" style="background:#3e2723;">タイトルへ戻る</button>
         </div>
     </div>
 
@@ -183,15 +221,15 @@
         };
         const SCORE = { 'K': 10000, 'R': 1000, 'B': 800, 'G': 600, 'S': 500, 'N': 400, 'L': 300, 'P': 100, 'R+': 1300, 'B+': 1100, 'S+': 650, 'N+': 650, 'L+': 650, 'P+': 650 };
 
-        let board = [], handPlayer = [], handAI = [], history = [];
+        let board = [], handPlayer = [], handAI = [];
         let selected = null, isTurnPlayer = true, isGameOver = false, aiLevel = 3, lastMove = null;
 
         function startGame() {
             aiLevel = parseInt(document.getElementById('ai-level').value);
-            const firstMovePref = document.getElementById('first-move').value;
+            const pref = document.getElementById('first-move').value;
             
-            if (firstMovePref === 'player') isTurnPlayer = true;
-            else if (firstMovePref === 'ai') isTurnPlayer = false;
+            if (pref === 'player') isTurnPlayer = true;
+            else if (pref === 'ai') isTurnPlayer = false;
             else isTurnPlayer = Math.random() < 0.5;
 
             document.getElementById('home-screen').classList.remove('active');
@@ -213,13 +251,13 @@
             ];
             updateStatus();
             render();
-            if (!isTurnPlayer) setTimeout(aiRoutine, 600);
+            if (!isTurnPlayer) setTimeout(aiRoutine, 800);
         }
 
         function updateStatus() {
-            const statusEl = document.getElementById('status');
+            const el = document.getElementById('status');
             if (isGameOver) return;
-            statusEl.textContent = isTurnPlayer ? "あなたの番です" : "AI 思考中...";
+            el.textContent = isTurnPlayer ? "あなたの番です" : "AI 思考中...";
         }
 
         function render() {
@@ -249,7 +287,7 @@
         function renderHand(id, hand, isPlayer) {
             const container = document.getElementById(id); container.innerHTML = '';
             const counts = {}; hand.forEach(p => counts[p] = (counts[p] || 0) + 1);
-            Object.keys(counts).forEach(p => {
+            Object.keys(counts).sort().forEach(p => {
                 const div = document.createElement('div');
                 div.className = 'hand-piece' + (isPlayer && selected && selected.piece === p ? ' selected' : '');
                 div.textContent = PIECES[p];
@@ -287,8 +325,8 @@
             let p = board[fr][fc];
             const target = board[tr][tc];
             if (target !== ' ') {
-                const captured = target.replace('+', '').toUpperCase();
-                (p === p.toUpperCase()) ? handPlayer.push(captured) : handAI.push(captured);
+                const cap = target.replace('+', '').toUpperCase();
+                (p === p.toUpperCase()) ? handPlayer.push(cap) : handAI.push(cap);
             }
             if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase())) {
                 if (p === p.toUpperCase() ? (tr <= 2 || fr <= 2) : (tr >= 6 || fr >= 6)) {
@@ -316,18 +354,25 @@
 
         function aiRoutine() {
             let moves = getLegalMoves(board, false);
-            if (moves.length === 0) { alert("AIが投了しました。"); isGameOver = true; return; }
-            let best = (aiLevel === 3) ? minimax(board, 2, -Infinity, Infinity, false).move : moves[Math.floor(Math.random()*moves.length)];
+            if (moves.length === 0) { document.getElementById('status').textContent = "あなたの勝利！(AI投了)"; isGameOver = true; return; }
+            let best;
+            if (aiLevel === 3) best = minimax(board, 2, -Infinity, Infinity, false).move;
+            else if (aiLevel === 2) {
+                moves.sort((a,b) => evaluate(simMove(board, a)) - evaluate(simMove(board, b)));
+                best = moves[0];
+            } else {
+                best = moves[Math.floor(Math.random()*moves.length)];
+            }
             if (best.type === 'move') movePiece(best.fr, best.fc, best.tr, best.tc);
             else dropPiece(best.piece, best.tr, best.tc, false);
         }
 
-        // --- ロジック・エンジン部分は以前と同一 ---
+        // --- ミニマックス探索 & 評価関数 ---
         function minimax(b, depth, alpha, beta, isMax) {
             if (depth === 0) return { score: evaluate(b) };
             let moves = getLegalMoves(b, isMax);
             if (moves.length === 0) return { score: isMax ? -100000 : 100000 };
-            let bestM = null;
+            let bestM = moves[0];
             if (isMax) {
                 let val = -Infinity;
                 for (let m of moves) {
@@ -346,83 +391,96 @@
                 return { score: val, move: bestM };
             }
         }
+
         function evaluate(b) {
             let s = 0;
             for(let r=0; r<9; r++) for(let c=0; c<9; c++){
                 const p = b[r][c]; if(p===' ') continue;
-                let v = SCORE[p.toUpperCase()] + ((p === p.toUpperCase()) ? (8-r)*5 : r*5);
+                let v = SCORE[p.toUpperCase()] + ((p === p.toUpperCase()) ? (8-r)*4 : r*4);
                 s += (p === p.toUpperCase()) ? v : -v;
             }
             return s;
         }
+
         function getLegalMoves(b, isP) {
-            let moves = [];
-            for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
+            let res = [];
+            for(let r=0; r<9; r++) for(let c=0; c<9; c++){
                 if(b[r][c] !== ' ' && (b[r][c] === b[r][c].toUpperCase()) === isP) {
-                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(isValidMoveLegal(r, c, tr, tc, b)) moves.push({type:'move', fr:r, fc:c, tr, tc});
+                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(isValidMoveLegal(r,c,tr,tc,b)) res.push({type:'move',fr:r,fc:c,tr,tc});
                 }
             }
-            let hand = isP ? handPlayer : handAI;
-            [...new Set(hand)].forEach(p => {
-                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(canDrop(p, tr, tc, isP, b)) moves.push({type:'drop', piece:p, tr, tc});
+            let h = isP ? handPlayer : handAI;
+            [...new Set(h)].forEach(p => {
+                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(canDrop(p,tr,tc,isP,b)) res.push({type:'drop',piece:p,tr,tc});
             });
-            return moves;
+            return res;
         }
+
         function isValidMoveLegal(fr, fc, tr, tc, b) {
-            if (!isValidMoveBasic(fr, fc, tr, tc, b)) return false;
-            let temp = simMove(b, {type:'move', fr, fc, tr, tc});
-            return !isCheck(b[fr][fc] === b[fr][fc].toLowerCase(), temp);
+            if(!isValidMoveBasic(fr, fc, tr, tc, b)) return false;
+            let n = simMove(b, {type:'move',fr,fc,tr,tc});
+            return !isCheck(b[fr][fc] === b[fr][fc].toLowerCase(), n);
         }
+
         function isCheck(isAI, b) {
             let kPos = null; const k = isAI ? 'k' : 'K';
             for(let r=0; r<9; r++) for(let c=0; c<9; c++) if(b[r][c]===k) kPos={r,c};
             if(!kPos) return true;
-            for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
-                const p = b[r][c]; if(p !== ' ' && (p===p.toLowerCase()) !== isAI) if(isValidMoveBasic(r, c, kPos.r, kPos.c, b)) return true;
+            for(let r=0; r<9; r++) for(let c=0; c<9; c++){
+                const p = b[r][c]; if(p !== ' ' && (p===p.toLowerCase()) !== isAI)
+                if(isValidMoveBasic(r,c,kPos.r,kPos.c,b)) return true;
             }
             return false;
         }
+
         function isValidMoveBasic(fr, fc, tr, tc, b) {
             const p = b[fr][fc], tp = b[tr][tc];
             if (tp !== ' ' && (p === p.toUpperCase()) === (tp === tp.toUpperCase())) return false;
             const dr = tr-fr, dc = tc-fc, adr = Math.abs(dr), adc = Math.abs(dc), s = p === p.toUpperCase() ? -1 : 1;
             if (p.includes('+')) {
                 const base = p.replace('+', '').toUpperCase();
-                if (base === 'R') return (dr === 0 || dc === 0 || (adr === 1 && adc === 1)) && isClear(fr, fc, tr, tc, b);
-                if (base === 'B') return (adr === adc || (adr === 1 && dc === 0) || (adc === 1 && dr === 0)) && isClear(fr, fc, tr, tc, b);
+                if (base === 'R') return (dr === 0 || dc === 0 || (adr === 1 && adc === 1)) && isClear(fr,fc,tr,tc,b);
+                if (base === 'B') return (adr === adc || (adr === 1 && dc === 0) || (adc === 1 && dr === 0)) && isClear(fr,fc,tr,tc,b);
                 return (adr <= 1 && adc <= 1) && !(dr === -s && adc === 1);
             }
             switch(p.toUpperCase()) {
                 case 'P': return dc === 0 && dr === s;
-                case 'L': return dc === 0 && dr*s > 0 && isClear(fr, fc, tr, tc, b);
+                case 'L': return dc === 0 && dr*s > 0 && isClear(fr,fc,tr,tc,b);
                 case 'N': return dr === s*2 && adc === 1;
                 case 'S': return (adr === 1 && adc === 1) || (dr === s && dc === 0);
                 case 'G': return (adr <= 1 && adc <= 1) && !(dr === -s && adc === 1);
                 case 'K': return adr <= 1 && adc <= 1;
-                case 'B': return adr === adc && isClear(fr, fc, tr, tc, b);
-                case 'R': return (dr === 0 || dc === 0) && isClear(fr, fc, tr, tc, b);
+                case 'B': return adr === adc && isClear(fr,fc,tr,tc,b);
+                case 'R': return (dr === 0 || dc === 0) && isClear(fr,fc,tr,tc,b);
             }
             return false;
         }
+
         function isClear(fr, fc, tr, tc, b) {
             const sr = Math.sign(tr-fr), sc = Math.sign(tc-fc);
             let r = fr+sr, c = fc+sc;
             while(r!==tr || c!==tc){ if(b[r][c]!==' ') return false; r+=sr; c+=sc; }
             return true;
         }
+
         function canDrop(p, tr, tc, isP, b) {
             if (b[tr][tc] !== ' ') return false;
             if ((p==='P'||p==='L') && (isP ? tr===0 : tr===8)) return false;
             if (p==='N' && (isP ? tr<=1 : tr>=7)) return false;
-            if (p==='P') for(let r=0; r<9; r++) if(b[r][tc]===(isP?'P':'p')) return false;
+            if (p==='P') {
+                for(let r=0; r<9; r++) if(b[r][tc]===(isP?'P':'p')) return false;
+                // 打歩詰チェック（簡易）は省略
+            }
             return true;
         }
+
         function simMove(b, m) {
             let n = b.map(r => [...r]);
             if(m.type==='move'){ n[m.tr][m.tc]=n[m.fr][m.fc]; n[m.fr][m.fc]=' '; }
             else{ n[m.tr][m.tc] = m.isPlayer ? m.piece.toUpperCase() : m.piece.toLowerCase(); }
             return n;
         }
+
         function checkEndGame() {
             if(getLegalMoves(board, isTurnPlayer).length === 0) {
                 const winner = isTurnPlayer ? "AI" : "あなた";
@@ -431,7 +489,6 @@
             }
             return false;
         }
-        function exportCSV() { alert("棋譜を保存しました（シミュレーション）"); }
     </script>
 </body>
 </html>
