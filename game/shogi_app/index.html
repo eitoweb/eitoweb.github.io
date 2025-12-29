@@ -57,7 +57,6 @@
         #board-container { background: var(--board-shadow); padding: 12px; border-radius: 4px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
         #board { display: grid; grid-template-columns: repeat(9, 62px); grid-template-rows: repeat(9, 64px); gap: 1px; background: #333; }
         .sq { width: 62px; height: 64px; background-color: var(--board-color); display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; }
-        
         .sq.invalid::after { content: ""; position: absolute; width: 100%; height: 100%; background: var(--invalid-sq); z-index: 5; }
 
         .piece {
@@ -101,8 +100,7 @@
             <h1 style="letter-spacing: 4px; margin-top:0;">将棋 AI</h1>
             <div class="option-group">
                 <label>AI 難易度</label>
-                <select id="ai-level">
-                    </select>
+                <select id="ai-level"></select>
             </div>
             <div class="option-group">
                 <label>手番選択</label>
@@ -131,7 +129,7 @@
         </div>
         <div class="controls">
             <button onclick="saveKifu()">棋譜保存(CSV)</button>
-            <button onclick="location.reload()" style="background:#3e2723;">タイトルへ</button>
+            <button onclick="backToTitle()" style="background:#3e2723;">タイトルへ戻る</button>
         </div>
     </div>
 
@@ -144,11 +142,15 @@
 
         const levels = ["10級","9級","8級","7級","6級","5級","4級","3級","2級","1級","初段","二段","三段","四段","五段","六段","七段","八段","九段","十段"];
         const levelSelect = document.getElementById('ai-level');
+        
+        // 難易度の読み込みと生成
+        const savedLevel = localStorage.getItem('shogi_ai_level') || "1";
         [...levels].reverse().forEach((l) => {
+            const val = levels.indexOf(l) + 1;
             const opt = document.createElement('option');
-            opt.value = levels.indexOf(l) + 1;
+            opt.value = val;
             opt.textContent = l;
-            if(l === "10級") opt.selected = true;
+            if(val.toString() === savedLevel) opt.selected = true;
             levelSelect.appendChild(opt);
         });
 
@@ -163,7 +165,7 @@
                 buttons.forEach(b => {
                     const btn = document.createElement('button');
                     btn.className = 'modal-btn ' + b.class; btn.textContent = b.label;
-                    btn.onclick = () => { this.overlay.style.display = 'none'; b.action(); };
+                    btn.onclick = () => { if(b.action) b.action(); this.overlay.style.display = 'none'; };
                     this.btns.appendChild(btn);
                 });
                 this.overlay.style.display = 'flex';
@@ -172,18 +174,25 @@
 
         function startGame() {
             currentLevel = parseInt(levelSelect.value);
+            localStorage.setItem('shogi_ai_level', currentLevel); // 難易度を保存
             const pref = document.getElementById('first-move').value;
             isTurnPlayer = pref === 'player' ? true : (pref === 'ai' ? false : Math.random() < 0.5);
             document.getElementById('home-screen').classList.remove('active');
             document.getElementById('game-screen').classList.add('active');
+            isGameOver = false;
             initGame();
             const msg = isTurnPlayer ? "あなたは【先手】です" : "あなたは【後手】です";
             modal.show("対局開始", `難易度: ${levels[currentLevel-1]} / ${msg}`, [{ label: "対局開始", class: "btn-yes", action: () => { if(!isTurnPlayer) setTimeout(aiRoutine, 600); } }]);
         }
 
+        function backToTitle() {
+            document.getElementById('game-screen').classList.remove('active');
+            document.getElementById('home-screen').classList.add('active');
+        }
+
         function initGame() {
             board = [ ['l','n','s','g','k','g','s','n','l'],[' ','r',' ',' ',' ',' ',' ','b',' '],['p','p','p','p','p','p','p','p','p'],[' ',' ',' ',' ',' ',' ',' ',' ',' '],[' ',' ',' ',' ',' ',' ',' ',' ',' '],[' ',' ',' ',' ',' ',' ',' ',' ',' '],['P','P','P','P','P','P','P','P','P'],[' ','B',' ',' ',' ',' ',' ','R',' '],['L','N','S','G','K','G','S','N','L'] ];
-            kifu = [["手番", "元", "先", "駒"]];
+            handPlayer = []; handAI = []; kifu = [["手番", "元", "先", "駒"]];
             updateStatus(); render();
         }
 
@@ -221,7 +230,7 @@
                 div.className = 'hand-piece' + (isP && selected && selected.type === 'hand' && selected.piece === p ? ' selected' : '');
                 div.textContent = PIECES[p];
                 if (counts[p] > 1) { const b = document.createElement('div'); b.className = 'badge'; b.textContent = counts[p]; div.appendChild(b); }
-                if (isP) div.onclick = (e) => { e.stopPropagation(); selected = (selected && selected.piece === p) ? null : { type: 'hand', piece: p }; render(); };
+                if (isP && !isGameOver) div.onclick = (e) => { e.stopPropagation(); selected = (selected && selected.piece === p) ? null : { type: 'hand', piece: p }; render(); };
                 container.appendChild(div);
             });
         }
@@ -230,21 +239,26 @@
             if (!isTurnPlayer || isGameOver) return;
             if (selected) {
                 if (selected.type === 'board') {
-                    if (isValidMoveLegal(selected.r, selected.c, r, c, board)) {
+                    if (isValidMoveBasic(selected.r, selected.c, r, c, board)) {
                         const p = board[selected.r][selected.c];
-                        // 成り判定
+                        const trg = board[r][c];
+                        
+                        // 王を取った判定
+                        if(trg.toUpperCase() === 'K') {
+                            executeMove(selected.r, selected.c, r, c, false);
+                            return; 
+                        }
+
                         if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && (r <= 2 || selected.r <= 2)) {
-                            // 強制成り判定（歩・香の一番奥、桂の奥二列）
                             if (((p === 'P' || p === 'L') && r === 0) || (p === 'N' && r <= 1)) {
                                 executeMove(selected.r, selected.c, r, c, true);
                             } else {
-                                // 座標を固定してモーダルを出す
                                 const fr = selected.r, fc = selected.c, tr = r, tc = c;
                                 modal.show("成り選択", "駒を成りますか？", [
                                     { label: "成る", class: "btn-yes", action: () => executeMove(fr, fc, tr, tc, true) },
                                     { label: "成らない", class: "btn-no", action: () => executeMove(fr, fc, tr, tc, false) }
                                 ]);
-                                selected = null; render(); return; // モーダル表示時はここで抜ける
+                                selected = null; render(); return;
                             }
                         } else {
                             executeMove(selected.r, selected.c, r, c, false);
@@ -268,30 +282,35 @@
         function executeMove(fr, fc, tr, tc, promote) {
             let p = board[fr][fc];
             const target = board[tr][tc];
-            if (target !== ' ') handPlayer.push(target.replace('+', '').toUpperCase());
+            
+            if (target !== ' ') {
+                if(target.toUpperCase() === 'K') {
+                    board[tr][tc] = promote ? p+"+" : p;
+                    board[fr][fc] = ' ';
+                    render();
+                    endGame(isTurnPlayer ? "あなたの勝利！王を取りました。" : "AIの勝利！王を取られました。");
+                    return;
+                }
+                handPlayer.push(target.replace('+', '').toUpperCase());
+            }
+            
             recordKifu("プレイヤー", `${9-fc}${fr+1}`, `${9-tc}${tr+1}`, PIECES[p.toUpperCase()] + (promote ? "成" : ""));
             if (promote) p += "+";
             board[tr][tc] = p; board[fr][fc] = ' ';
             lastMove = { tr, tc }; endTurn();
         }
 
-        function canDrop(p, tr, tc, isP, b) {
-            if (b[tr][tc] !== ' ') return false;
-            if ((p==='P'||p==='L') && (isP ? tr===0 : tr===8)) return false;
-            if (p==='N' && (isP ? tr<=1 : tr>=7)) return false;
-            if (p==='P') for(let r=0; r<9; r++) if(b[r][tc]===(isP?'P':'p')) return false;
-            return true;
-        }
-
         function endTurn() {
+            if(isGameOver) return;
             selected = null; isTurnPlayer = !isTurnPlayer; updateStatus(); render();
-            if (checkEndGame()) return;
             if (!isTurnPlayer) setTimeout(aiRoutine, 600);
         }
 
         function aiRoutine() {
+            if(isGameOver) return;
             let moves = getLegalMoves(board, false);
             if (moves.length === 0) { endGame("AI投了。あなたの勝利！"); return; }
+            
             let depth = currentLevel >= 18 ? 4 : (currentLevel >= 11 ? 3 : 2);
             let best = minimax(board, depth, -Infinity, Infinity, false).move;
             if (currentLevel <= 5 && Math.random() > (currentLevel * 0.15)) best = moves[Math.floor(Math.random() * moves.length)];
@@ -299,8 +318,15 @@
             if (best.type === 'move') {
                 let p = board[best.fr][best.fc];
                 const target = board[best.tr][best.tc];
+                
+                if (target.toUpperCase() === 'K') {
+                    board[best.tr][best.tc] = p; board[best.fr][best.fc] = ' ';
+                    render();
+                    endGame("AIの勝利！王を取られました。");
+                    return;
+                }
+
                 if (target !== ' ') handAI.push(target.replace('+', '').toUpperCase());
-                // AIの成り判断：基本成れるなら成る
                 if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && (best.tr >= 6 || best.fr >= 6)) p += "+";
                 recordKifu("AI", `${9-best.fc}${best.fr+1}`, `${9-best.tr}${best.tr+1}`, PIECES[p.toUpperCase().replace('+','')] + (p.includes('+')?"成":""));
                 board[best.tr][best.tc] = p; board[best.fr][best.fc] = ' ';
@@ -312,6 +338,21 @@
             lastMove = { tr: best.tr, tc: best.tc }; endTurn();
         }
 
+        function canDrop(p, tr, tc, isP, b) {
+            if (b[tr][tc] !== ' ') return false;
+            if ((p==='P'||p==='L') && (isP ? tr===0 : tr===8)) return false;
+            if (p==='N' && (isP ? tr<=1 : tr>=7)) return false;
+            if (p==='P') for(let r=0; r<9; r++) if(b[r][tc]===(isP?'P':'p')) return false;
+            return true;
+        }
+
+        function endGame(msg) {
+            isGameOver = true; 
+            document.getElementById('status').textContent = "対局終了";
+            modal.show("対局終了", msg, [{ label: "OK", class: "btn-yes" }]);
+            render();
+        }
+
         function recordKifu(who, from, to, piece) { kifu.push([who, from, to, piece]); }
         function saveKifu() {
             let csv = kifu.map(row => row.join(",")).join("\n");
@@ -321,6 +362,7 @@
             link.download = "shogi_kifu.csv"; link.click();
         }
 
+        // AIロジック (Minimax)
         function minimax(b, d, a, bt, isM) {
             if (d === 0) return { score: evaluate(b) };
             let moves = getLegalMoves(b, isM);
@@ -347,11 +389,16 @@
 
         function evaluate(b) {
             let s = 0;
+            let playerKing = false, aiKing = false;
             for(let r=0; r<9; r++) for(let c=0; c<9; c++){
                 const p = b[r][c]; if(p===' ') continue;
+                if(p === 'K') playerKing = true;
+                if(p === 'k') aiKing = true;
                 let v = SCORE[p.toUpperCase()] + (p === p.toUpperCase() ? (8-r)*2 : r*2);
                 s += (p === p.toUpperCase()) ? v : -v;
             }
+            if(!playerKing) return -100000;
+            if(!aiKing) return 100000;
             handPlayer.forEach(p => s += SCORE[p] * 0.9);
             handAI.forEach(p => s -= SCORE[p] * 0.9);
             return s;
@@ -361,9 +408,8 @@
             let res = [];
             for(let r=0; r<9; r++) for(let c=0; c<9; c++){
                 if(b[r][c] !== ' ' && (b[r][c] === b[r][c].toUpperCase()) === isP) {
-                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(isValidMoveBasic(r,c,tr,tc,b)) {
-                        let n = simMove(b, {type:'move',fr:r,fc:c,tr,tc});
-                        if(!isCheck(!isP, n)) res.push({type:'move',fr:r,fc:c,tr,tc});
+                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) {
+                        if(isValidMoveBasic(r,c,tr,tc,b)) res.push({type:'move',fr:r,fc:c,tr,tc});
                     }
                 }
             }
@@ -372,22 +418,6 @@
                 for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(canDrop(p,tr,tc,isP,b)) res.push({type:'drop',piece:p,tr,tc});
             });
             return res;
-        }
-
-        function isValidMoveLegal(fr, fc, tr, tc, b) {
-            if(!isValidMoveBasic(fr, fc, tr, tc, b)) return false;
-            let n = simMove(b, {type:'move',fr,fc,tr,tc});
-            return !isCheck(false, n);
-        }
-
-        function isCheck(isAI, b) {
-            let kPos = null; const k = isAI ? 'k' : 'K';
-            for(let r=0; r<9; r++) for(let c=0; c<9; c++) if(b[r][c]===k) kPos={r,c};
-            if(!kPos) return true;
-            for(let r=0; r<9; r++) for(let c=0; c<9; c++){
-                const p = b[r][c]; if(p !== ' ' && (p===p.toLowerCase()) !== isAI) if(isValidMoveBasic(r,c,kPos.r,kPos.c,b)) return true;
-            }
-            return false;
         }
 
         function isValidMoveBasic(fr, fc, tr, tc, b) {
@@ -425,18 +455,6 @@
             if(m.type==='move'){ n[m.tr][m.tc]=n[m.fr][m.fc]; n[m.fr][m.fc]=' '; }
             else{ n[m.tr][m.tc] = isTurnPlayer ? m.piece.toUpperCase() : m.piece.toLowerCase(); }
             return n;
-        }
-
-        function checkEndGame() {
-            if(getLegalMoves(board, isTurnPlayer).length === 0) {
-                endGame(isTurnPlayer ? "AIの勝利！" : "あなたの勝利！"); return true;
-            }
-            return false;
-        }
-
-        function endGame(msg) {
-            isGameOver = true; document.getElementById('status').textContent = "終局";
-            modal.show("対局終了", msg, [{ label: "タイトルへ", class: "btn-yes", action: () => location.reload() }]);
         }
     </script>
 </body>
