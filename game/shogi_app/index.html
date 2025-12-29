@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>将棋 AI - 20段階難易度</title>
+    <title>将棋 AI - 20段階難易度完全版</title>
     <style>
         :root {
             --board-color: #e3c878;
@@ -14,7 +14,7 @@
         }
 
         body {
-            font-family: "Helvetica Neue", "Arial", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Meiryo", sans-serif;
+            font-family: "Helvetica Neue", Arial, sans-serif;
             background-color: #2b1d1a;
             color: white;
             margin: 0;
@@ -45,7 +45,6 @@
         .modal-btns { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
         .modal-btn { padding: 10px 25px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
         .btn-yes { background: #5d4037; color: white; }
-        .btn-no { background: #d7ccc8; color: #3e2723; }
 
         /* 設定画面 */
         .menu-card {
@@ -57,6 +56,7 @@
         select { width: 100%; padding: 12px; background: #fdf5e6; border-radius: 6px; font-size: 1rem; color: #3e2723; }
 
         /* ゲームレイアウト */
+        .game-container { display: flex; flex-direction: column; align-items: center; gap: 10px; }
         .hand-box {
             background: #d7ccc8; color: #3e2723; padding: 8px 15px; border-radius: 6px;
             width: 558px; min-height: 60px; display: flex; align-items: center; gap: 15px;
@@ -82,9 +82,18 @@
 
         .sq.selected::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(255, 235, 59, 0.4); }
         .sq.last-move::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(255, 87, 34, 0.3); }
+
+        /* 持ち駒の駒スタイル */
+        .hand-piece {
+            background: var(--piece-bg); clip-path: polygon(50% 0%, 92% 18%, 100% 100%, 0% 100%, 8% 18%);
+            display: flex; justify-content: center; align-items: center; color: var(--piece-text);
+            width: 42px; height: 46px; font-size: 26px; position: relative; cursor: pointer; font-weight: bold;
+        }
+        .hand-piece.selected { background: #fff176; outline: 3px solid #f44336; }
         
         #status { font-size: 1.4rem; margin-bottom: 10px; color: #e3c878; font-weight: bold; }
-        button { padding: 12px 30px; background: #5d4037; color: white; border: none; cursor: pointer; border-radius: 6px; font-weight: bold; }
+        .controls { margin-top: 15px; display: flex; gap: 10px; }
+        button { padding: 12px 25px; background: #5d4037; color: white; border: none; cursor: pointer; border-radius: 6px; font-weight: bold; }
         .badge { position: absolute; bottom: -4px; right: -4px; background: #d32f2f; color: white; font-size: 11px; padding: 1px 5px; border-radius: 10px; border: 1px solid white; }
     </style>
 </head>
@@ -102,12 +111,12 @@
         <div class="menu-card">
             <h1 style="letter-spacing: 4px; margin-top:0;">将棋 AI</h1>
             <div class="option-group">
-                <label>AI 難易度</label>
+                <label>AI 難易度（上が十段）</label>
                 <select id="ai-level">
                     </select>
             </div>
             <div class="option-group">
-                <label>手番</label>
+                <label>手番選択</label>
                 <select id="first-move">
                     <option value="player">あなた (先手)</option>
                     <option value="ai">AI (先手)</option>
@@ -120,27 +129,37 @@
 
     <div id="game-screen" class="screen">
         <div id="status">対局準備中...</div>
-        <div class="hand-box"><div style="font-size:0.7rem;width:60px;">AI 持ち駒</div><div id="hand-ai"></div></div>
-        <div id="board-container"><div id="board"></div></div>
-        <div class="hand-box"><div style="font-size:0.7rem;width:60px;">自軍 持ち駒</div><div id="hand-player"></div></div>
-        <div style="margin-top:15px;"><button onclick="location.reload()" style="background:#3e2723;">タイトルへ戻る</button></div>
+        <div class="game-container">
+            <div class="hand-box">
+                <div style="font-size:0.7rem;width:60px;">AI 持ち駒</div>
+                <div id="hand-ai" style="display:flex; gap:5px;"></div>
+            </div>
+            <div id="board-container"><div id="board"></div></div>
+            <div class="hand-box">
+                <div style="font-size:0.7rem;width:60px;">自軍 持ち駒</div>
+                <div id="hand-player" style="display:flex; gap:5px;"></div>
+            </div>
+        </div>
+        <div class="controls">
+            <button onclick="saveKifu()">棋譜保存(CSV)</button>
+            <button onclick="location.reload()" style="background:#3e2723;">タイトルへ</button>
+        </div>
     </div>
 
     <script>
         const PIECES = { 'K': '王', 'R': '飛', 'B': '角', 'G': '金', 'S': '銀', 'N': '桂', 'L': '香', 'P': '歩', 'R+': '龍', 'B+': '馬', 'S+': '全', 'N+': '圭', 'L+': '杏', 'P+': 'と' };
         const SCORE = { 'K': 20000, 'R': 1000, 'B': 850, 'G': 600, 'S': 500, 'N': 450, 'L': 400, 'P': 100, 'R+': 1500, 'B+': 1300, 'S+': 650, 'N+': 650, 'L+': 650, 'P+': 650 };
 
-        let board = [], handPlayer = [], handAI = [];
+        let board = [], handPlayer = [], handAI = [], kifu = [];
         let selected = null, isTurnPlayer = true, isGameOver = false, currentLevel = 1, lastMove = null;
 
-        // 難易度プルダウン生成
-        const levelSelect = document.getElementById('ai-level');
+        // 難易度選択の生成 (10級を下に、十段を上に表示)
         const levels = ["10級","9級","8級","7級","6級","5級","4級","3級","2級","1級","初段","二段","三段","四段","五段","六段","七段","八段","九段","十段"];
-        levels.forEach((l, i) => {
+        const levelSelect = document.getElementById('ai-level');
+        [...levels].reverse().forEach((l) => {
             const opt = document.createElement('option');
-            opt.value = i + 1;
+            opt.value = levels.indexOf(l) + 1;
             opt.textContent = l;
-            if(i === 0) opt.selected = true;
             levelSelect.appendChild(opt);
         });
 
@@ -175,6 +194,7 @@
 
         function initGame() {
             board = [ ['l','n','s','g','k','g','s','n','l'],[' ','r',' ',' ',' ',' ',' ','b',' '],['p','p','p','p','p','p','p','p','p'],[' ',' ',' ',' ',' ',' ',' ',' ',' '],[' ',' ',' ',' ',' ',' ',' ',' ',' '],[' ',' ',' ',' ',' ',' ',' ',' ',' '],['P','P','P','P','P','P','P','P','P'],[' ','B',' ',' ',' ',' ',' ','R',' '],['L','N','S','G','K','G','S','N','L'] ];
+            kifu = [["手番", "移動前", "移動後", "駒"]];
             updateStatus(); render();
         }
 
@@ -206,13 +226,16 @@
             const container = document.getElementById(id); container.innerHTML = '';
             const counts = {}; hand.forEach(p => counts[p] = (counts[p] || 0) + 1);
             Object.keys(counts).sort().forEach(p => {
-                const div = document.createElement('div'); div.className = 'hand-piece' + (isP && selected && selected.piece === p ? ' selected' : '');
+                const div = document.createElement('div'); 
+                div.className = 'hand-piece' + (isP && selected && selected.type === 'hand' && selected.piece === p ? ' selected' : '');
                 div.textContent = PIECES[p];
                 if (counts[p] > 1) { const b = document.createElement('div'); b.className = 'badge'; b.textContent = counts[p]; div.appendChild(b); }
-                if (isP) div.onclick = (e) => { e.stopPropagation(); selected = (selected && selected.piece === p) ? null : { type: 'hand', piece: p }; render(); };
+                if (isP) div.onclick = (e) => { e.stopPropagation(); selectHand(p); };
                 container.appendChild(div);
             });
         }
+
+        function selectHand(p) { if (!isTurnPlayer || isGameOver) return; selected = (selected && selected.piece === p) ? null : { type: 'hand', piece: p }; render(); }
 
         function onSquareClick(r, c) {
             if (!isTurnPlayer || isGameOver) return;
@@ -221,8 +244,7 @@
                     if (isValidMoveLegal(selected.r, selected.c, r, c, board)) {
                         const p = board[selected.r][selected.c];
                         if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && (r <= 2 || selected.r <= 2)) {
-                            if ((p==='P'||p==='L') && r===0 || (p==='N' && r<=1)) executeMove(selected.r, selected.c, r, c, true);
-                            else modal.show("成り選択", "駒を成りますか？", [
+                            modal.show("成り選択", "駒を成りますか？", [
                                 { label: "成る", class: "btn-yes", action: () => executeMove(selected.r, selected.c, r, c, true) },
                                 { label: "成らない", class: "btn-no", action: () => executeMove(selected.r, selected.c, r, c, false) }
                             ]);
@@ -231,8 +253,9 @@
                 } else if (selected.type === 'hand') {
                     if (canDrop(selected.piece, r, c, true, board)) {
                         board[r][c] = selected.piece.toUpperCase();
+                        recordKifu("プレイヤー", "持ち駒", `${9-c}一二三四五六七八九`[r+1], PIECES[selected.piece]);
                         handPlayer.splice(handPlayer.indexOf(selected.piece), 1);
-                        lastMove = { tr: r, tc: c }; endTurn();
+                        lastMove = { tr: r, tc: c }; selected = null; endTurn();
                     }
                 }
                 selected = null;
@@ -246,6 +269,7 @@
             let p = board[fr][fc];
             const target = board[tr][tc];
             if (target !== ' ') handPlayer.push(target.replace('+', '').toUpperCase());
+            recordKifu("プレイヤー", `${9-fc}${fr+1}`, `${9-tc}${tr+1}`, PIECES[p.toUpperCase()] + (promote?"成":""));
             if (promote) p += "+";
             board[tr][tc] = p; board[fr][fc] = ' ';
             lastMove = { tr, tc }; endTurn();
@@ -259,42 +283,42 @@
 
         function aiRoutine() {
             let moves = getLegalMoves(board, false);
-            if (moves.length === 0) { endGame("AIが投了しました。あなたの勝利です！"); return; }
-            
-            // 難易度に応じた探索深さ設定
-            let depth = 1;
-            if (currentLevel >= 11) depth = 3; // 段位以上
-            if (currentLevel >= 18) depth = 4; // 八段以上（ブラウザの限界に近い）
-
-            let result = minimax(board, depth, -Infinity, Infinity, false);
-            let best = result.move;
-
-            // 低級（10級〜6級）の場合は、一定確率で最善手以外を選ぶ（わざと隙を作る）
-            if (currentLevel <= 5 && Math.random() > (currentLevel * 0.15)) {
-                best = moves[Math.floor(Math.random() * moves.length)];
-            }
+            if (moves.length === 0) { endGame("AI投了。あなたの勝利！"); return; }
+            let depth = currentLevel >= 18 ? 4 : (currentLevel >= 11 ? 3 : 2);
+            let best = minimax(board, depth, -Infinity, Infinity, false).move;
+            if (currentLevel <= 5 && Math.random() > (currentLevel * 0.15)) best = moves[Math.floor(Math.random() * moves.length)];
 
             if (best.type === 'move') {
                 let p = board[best.fr][best.fc];
                 const target = board[best.tr][best.tc];
                 if (target !== ' ') handAI.push(target.replace('+', '').toUpperCase());
-                // AIの成り判断（駒得になるか、金相当の動きができるなら成る）
                 if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && (best.tr >= 6 || best.fr >= 6)) p += "+";
+                recordKifu("AI", `${9-best.fc}${best.fr+1}`, `${9-best.tr}${best.tr+1}`, PIECES[p.toUpperCase()]);
                 board[best.tr][best.tc] = p; board[best.fr][best.fc] = ' ';
-                lastMove = { tr: best.tr, tc: best.tc };
             } else {
                 board[best.tr][best.tc] = best.piece.toLowerCase();
+                recordKifu("AI", "持ち駒", `${9-best.tc}${best.tr+1}`, PIECES[best.piece]);
                 handAI.splice(handAI.indexOf(best.piece), 1);
-                lastMove = { tr: best.tr, tc: best.tc };
             }
-            endTurn();
+            lastMove = { tr: best.tr, tc: best.tc }; endTurn();
         }
 
+        function recordKifu(who, from, to, piece) { kifu.push([who, from, to, piece]); }
+
+        function saveKifu() {
+            let csv = kifu.map(row => row.join(",")).join("\n");
+            let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "shogi_kifu.csv";
+            link.click();
+        }
+
+        // --- 以下AIロジック（ミニマックス/評価/バリデーション） ---
         function minimax(b, depth, alpha, beta, isMax) {
             if (depth === 0) return { score: evaluate(b) };
             let moves = getLegalMoves(b, isMax);
             if (moves.length === 0) return { score: isMax ? -30000 : 30000 };
-            
             let bestMove = moves[0];
             if (isMax) {
                 let val = -Infinity;
@@ -317,25 +341,24 @@
 
         function evaluate(b) {
             let s = 0;
-            const levelBonus = currentLevel * 2; // 難易度が上がるとポジション評価を重視
             for(let r=0; r<9; r++) for(let c=0; c<9; c++){
                 const p = b[r][c]; if(p===' ') continue;
-                let v = SCORE[p.toUpperCase()];
-                // ポジション評価（段位が上がるほど精密に）
-                const posScore = (p === p.toUpperCase()) ? (8-r) * levelBonus : r * levelBonus;
-                s += (p === p.toUpperCase()) ? (v + posScore) : -(v + posScore);
+                let v = SCORE[p.toUpperCase()] + (p === p.toUpperCase() ? (8-r)*currentLevel : r*currentLevel);
+                s += (p === p.toUpperCase()) ? v : -v;
             }
             handPlayer.forEach(p => s += SCORE[p] * 0.9);
             handAI.forEach(p => s -= SCORE[p] * 0.9);
             return s;
         }
 
-        // --- ルールエンジン（以前のコードと同様） ---
         function getLegalMoves(b, isP) {
             let res = [];
             for(let r=0; r<9; r++) for(let c=0; c<9; c++){
                 if(b[r][c] !== ' ' && (b[r][c] === b[r][c].toUpperCase()) === isP) {
-                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(isValidMoveLegal(r,c,tr,tc,b)) res.push({type:'move',fr:r,fc:c,tr,tc});
+                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(isValidMoveBasic(r,c,tr,tc,b)) {
+                        let n = simMove(b, {type:'move',fr:r,fc:c,tr,tc});
+                        if(!isCheck(!isP, n)) res.push({type:'move',fr:r,fc:c,tr,tc});
+                    }
                 }
             }
             let h = isP ? handPlayer : handAI;
@@ -348,7 +371,7 @@
         function isValidMoveLegal(fr, fc, tr, tc, b) {
             if(!isValidMoveBasic(fr, fc, tr, tc, b)) return false;
             let n = simMove(b, {type:'move',fr,fc,tr,tc});
-            return !isCheck(b[fr][fc] === b[fr][fc].toLowerCase(), n);
+            return !isCheck(false, n);
         }
 
         function isCheck(isAI, b) {
@@ -408,8 +431,7 @@
 
         function checkEndGame() {
             if(getLegalMoves(board, isTurnPlayer).length === 0) {
-                endGame(isTurnPlayer ? "詰みました。AIの勝利です。" : "王手が決まりました。あなたの勝利です！");
-                return true;
+                endGame(isTurnPlayer ? "AIの勝利！" : "あなたの勝利！"); return true;
             }
             return false;
         }
