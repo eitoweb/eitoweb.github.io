@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>将棋 AI - 正式ルール準拠版</title>
+    <title>将棋 AI</title>
     <style>
         :root {
             --board-color: #e3c878;
@@ -290,6 +290,8 @@
 
             if (target !== ' ') {
                 if(target.toUpperCase() === 'K') {
+                    // 王奪取の棋譜を記録
+                    recordKifu("プレイヤー", `${9-fc}${fr+1}`, `${9-tc}${tr+1}`, PIECES[p.toUpperCase()] + (promote ? "成" : ""));
                     board[tr][tc] = promote ? p+"+" : p;
                     board[fr][fc] = ' ';
                     endGame(isTurnPlayer ? "あなたの勝利！王を取りました。" : "AIの勝利！王を取られました。");
@@ -325,6 +327,8 @@
                 lastMove = { tr: best.tr, tc: best.tc };
 
                 if (target.toUpperCase() === 'K') {
+                    // AIによる王奪取の棋譜を記録
+                    recordKifu("AI", `${9-best.fc}${best.fr+1}`, `${9-best.tr}${best.tr+1}`, PIECES[p.toUpperCase().replace('+','')]);
                     board[best.tr][best.tc] = p; board[best.fr][best.fc] = ' ';
                     endGame("AIの勝利！王を取られました。");
                     return;
@@ -348,7 +352,6 @@
             if ((p==='P'||p==='L') && (isP ? tr===0 : tr===8)) return false;
             if (p==='N' && (isP ? tr<=1 : tr>=7)) return false;
             
-            // 二歩の判定（と金はカウントしない）
             if (p==='P') {
                 for(let r=0; r<9; r++) {
                     const targetPiece = b[r][tc];
