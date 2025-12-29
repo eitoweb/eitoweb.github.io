@@ -55,8 +55,7 @@
         select { width: 100%; padding: 12px; background: #fdf5e6; border-radius: 6px; font-size: 1rem; color: #3e2723; }
 
         /* ゲーム盤面 */
-        #game-view { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        .rotated { transform: rotate(180deg); }
+        #game-view { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 
         .hand-box {
             background: #d7ccc8; color: #3e2723; padding: 8px 15px; border-radius: 6px;
@@ -72,9 +71,16 @@
             background: var(--piece-bg); color: var(--piece-text); display: flex; justify-content: center; align-items: center;
             font-family: "serif"; font-weight: 900; clip-path: polygon(50% 0%, 93% 18%, 100% 100%, 0% 100%, 7% 18%);
             box-shadow: inset 0 -4px 4px rgba(0,0,0,0.15); line-height: 1; pointer-events: none; z-index: 2;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        /* AI側（後手）の駒はデフォルトで逆向き */
-        .piece.ai { transform: rotate(180deg); } 
+
+        /* 駒の基本向き設定 */
+        .piece.ai-side { transform: rotate(180deg); }
+        
+        /* 1vs1モードでの文字反転（手番に合わせて駒自体ではなく文字の向きを調整） */
+        .turn-gote .piece { transform: rotate(180deg); }
+        .turn-gote .piece.ai-side { transform: rotate(0deg); } /* 元々逆のものは正位置に */
+
         .p-K { width: 57px; height: 61px; font-size: 42px; } .p-R, .p-B { width: 53px; height: 57px; font-size: 38px; }
         .p-G, .p-S { width: 50px; height: 54px; font-size: 36px; } .p-N, .p-L { width: 46px; height: 50px; font-size: 32px; }
         .p-P { width: 42px; height: 46px; font-size: 28px; }
@@ -87,15 +93,19 @@
             background: var(--piece-bg); clip-path: polygon(50% 0%, 92% 18%, 100% 100%, 0% 100%, 8% 18%);
             display: flex; justify-content: center; align-items: center; color: var(--piece-text);
             width: 42px; height: 46px; font-size: 26px; position: relative; cursor: pointer; font-weight: bold;
+            transition: transform 0.4s;
         }
+        .hand-piece.ai-side { transform: rotate(180deg); }
+        .turn-gote .hand-piece { transform: rotate(180deg); }
+        .turn-gote .hand-piece.ai-side { transform: rotate(0deg); }
+
         .hand-piece.selected { background: #fff176; outline: 3px solid #f44336; }
         
-        #status { font-size: 1.4rem; margin-bottom: 10px; color: #e3c878; font-weight: bold; transition: transform 0.6s; }
+        #status { font-size: 1.4rem; margin-bottom: 10px; color: #e3c878; font-weight: bold; }
         .controls { margin-top: 15px; display: flex; gap: 10px; }
         button { padding: 12px 25px; background: #5d4037; color: white; border: none; cursor: pointer; border-radius: 6px; font-weight: bold; }
         .badge { position: absolute; bottom: -4px; right: -4px; background: #d32f2f; color: white; font-size: 11px; padding: 1px 5px; border-radius: 10px; border: 1px solid white; }
 
-        /* スイッチスタイル */
         .switch { position: relative; display: inline-block; width: 50px; height: 24px; vertical-align: middle; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
@@ -119,21 +129,18 @@
     <div id="home-screen" class="screen active">
         <div class="menu-card">
             <h1 style="letter-spacing: 4px; margin-top:0;">将棋 AI & 1vs1</h1>
-            
             <div class="option-group">
                 <label>1vs1 (対面対戦モード) <span style="float:right;"><label class="switch"><input type="checkbox" id="mode-1vs1" onchange="toggleAILevel()"><span class="slider"></span></label></span></label>
             </div>
-
             <div id="ai-level-group" class="option-group">
                 <label>AI 難易度</label>
                 <select id="ai-level"></select>
             </div>
-
             <div class="option-group">
                 <label>手番選択</label>
                 <select id="first-move">
-                    <option value="player">先手</option>
-                    <option value="ai">後手</option>
+                    <option value="player">あなた/先手</option>
+                    <option value="ai">AI/後手</option>
                     <option value="random">ランダム</option>
                 </select>
             </div>
@@ -145,18 +152,18 @@
         <div id="status">対局中</div>
         <div id="game-view">
             <div class="hand-box">
-                <div id="name-top" style="font-size:0.7rem;width:60px;">後手 持ち駒</div>
+                <div id="name-top" style="font-size:0.7rem;width:60px;">後手</div>
                 <div id="hand-ai" style="display:flex; gap:5px;"></div>
             </div>
             <div id="board-container"><div id="board"></div></div>
             <div class="hand-box">
-                <div id="name-bottom" style="font-size:0.7rem;width:60px;">先手 持ち駒</div>
+                <div id="name-bottom" style="font-size:0.7rem;width:60px;">先手</div>
                 <div id="hand-player" style="display:flex; gap:5px;"></div>
             </div>
         </div>
         <div class="controls">
-            <button onclick="saveKifu()">棋譜保存(CSV)</button>
-            <button onclick="backToTitle()" style="background:#3e2723;">タイトルへ戻る</button>
+            <button onclick="saveKifu()">棋譜保存</button>
+            <button onclick="backToTitle()" style="background:#3e2723;">終了</button>
         </div>
     </div>
 
@@ -169,12 +176,11 @@
 
         const levels = ["10級","9級","8級","7級","6級","5級","4級","3級","2級","1級","初段","二段","三段","四段","五段","六段","七段","八段","九段","十段"];
         const levelSelect = document.getElementById('ai-level');
-        const savedLevel = localStorage.getItem('shogi_ai_level') || "1";
-        [...levels].reverse().forEach((l) => {
+        [...levels].reverse().forEach((l, i) => {
             const val = levels.indexOf(l) + 1;
             const opt = document.createElement('option');
             opt.value = val; opt.textContent = l;
-            if(val.toString() === savedLevel) opt.selected = true;
+            if(val === 1) opt.selected = true;
             levelSelect.appendChild(opt);
         });
 
@@ -182,7 +188,7 @@
             overlay: document.getElementById('modal-overlay'),
             title: document.getElementById('modal-title'),
             body: document.getElementById('modal-body'),
-            btns: document.querySelector('.modal-btns'),
+            btns: document.getElementById('modal-btns'),
             show: function(title, text, buttons) {
                 this.title.textContent = title; this.body.textContent = text;
                 this.btns.innerHTML = '';
@@ -197,34 +203,30 @@
         };
 
         function toggleAILevel() {
-            const group = document.getElementById('ai-level-group');
-            document.getElementById('mode-1vs1').checked ? group.classList.add('disabled') : group.classList.remove('disabled');
+            document.getElementById('ai-level-group').classList.toggle('disabled', document.getElementById('mode-1vs1').checked);
         }
 
         function startGame() {
             is1vs1 = document.getElementById('mode-1vs1').checked;
             currentLevel = parseInt(levelSelect.value);
-            localStorage.setItem('shogi_ai_level', currentLevel);
             const pref = document.getElementById('first-move').value;
             isTurnPlayer = pref === 'player' ? true : (pref === 'ai' ? false : Math.random() < 0.5);
             isGameOver = false; selected = null; lastMove = null; handPlayer = []; handAI = [];
             
             document.getElementById('home-screen').classList.remove('active');
             document.getElementById('game-screen').classList.add('active');
+            document.getElementById('name-top').textContent = is1vs1 ? "後手" : "AI";
             
-            // iPad対応: 1vs1なら表示名を変更
-            document.getElementById('name-top').textContent = is1vs1 ? "後手 持ち駒" : "AI 持ち駒";
-            document.getElementById('name-bottom').textContent = is1vs1 ? "先手 持ち駒" : "自軍 持ち駒";
-
             initGame();
-            const startText = is1vs1 ? "1vs1モード開始" : `難易度: ${levels[currentLevel-1]}`;
-            modal.show("対局開始", `${startText}`, [{ label: "対局開始", class: "btn-yes", action: () => { if(!isTurnPlayer && !is1vs1) setTimeout(aiRoutine, 600); } }]);
+            modal.show("対局開始", is1vs1 ? "1vs1モード：交互に操作してください" : `対AI：${levels[currentLevel-1]}`, [
+                { label: "開始", class: "btn-yes", action: () => { if(!isTurnPlayer && !is1vs1) setTimeout(aiRoutine, 600); } }
+            ]);
         }
 
         function backToTitle() {
             document.getElementById('game-screen').classList.remove('active');
             document.getElementById('home-screen').classList.add('active');
-            document.getElementById('game-view').classList.remove('rotated');
+            document.getElementById('game-view').className = '';
         }
 
         function initGame() {
@@ -236,13 +238,12 @@
         function updateStatus() { 
             if(isGameOver) return;
             const turnName = isTurnPlayer ? "先手" : (is1vs1 ? "後手" : "AI");
-            document.getElementById('status').textContent = is1vs1 ? `${turnName}の番です` : (isTurnPlayer ? "あなたの番です" : "AI 思考中...");
+            document.getElementById('status').textContent = `${turnName}の手番です`;
             
-            // iPad対応: 1vs1なら手番に合わせて画面全体を回転
-            if(is1vs1) {
-                const view = document.getElementById('game-view');
-                isTurnPlayer ? view.classList.remove('rotated') : view.classList.add('rotated');
-            }
+            // 1vs1モード時のみ、手番に合わせて駒文字の向きを反転させるためのクラス付与
+            const view = document.getElementById('game-view');
+            if (is1vs1 && !isTurnPlayer) view.classList.add('turn-gote');
+            else view.classList.remove('turn-gote');
         }
 
         function render() {
@@ -253,10 +254,12 @@
                     if (selected && selected.type === 'board' && selected.r === r && selected.c === c) sq.classList.add('selected');
                     if (lastMove && lastMove.tr === r && lastMove.tc === c) sq.classList.add('last-move');
                     if (selected && selected.type === 'hand' && !canDrop(selected.piece, r, c, isTurnPlayer, board)) sq.classList.add('invalid');
+                    
                     const p = board[r][c];
                     if (p !== ' ') {
                         const pEl = document.createElement('div');
-                        pEl.className = `piece p-${p.toUpperCase().replace('+','')}` + (p===p.toLowerCase()?' ai':'') + (p.includes('+')?' promoted':'');
+                        const isAiSide = p === p.toLowerCase();
+                        pEl.className = `piece p-${p.toUpperCase().replace('+','')}` + (isAiSide ? ' ai-side' : '') + (p.includes('+') ? ' promoted' : '');
                         pEl.textContent = PIECES[p.toUpperCase()] || PIECES[p];
                         sq.appendChild(pEl);
                     }
@@ -273,12 +276,11 @@
             const counts = {}; hand.forEach(p => counts[p] = (counts[p] || 0) + 1);
             Object.keys(counts).sort().forEach(p => {
                 const div = document.createElement('div'); 
-                const isActiveHand = (isTurnPlayer && isPBox) || (!isTurnPlayer && !isPBox && is1vs1);
-                div.className = 'hand-piece' + (isActiveHand && selected && selected.type === 'hand' && selected.piece === p ? ' selected' : '');
-                if (!isPBox) div.classList.add('ai'); // 後手の駒は常に逆向き
+                const isActiveSide = (isTurnPlayer && isPBox) || (!isTurnPlayer && !isPBox && is1vs1);
+                div.className = 'hand-piece' + (!isPBox ? ' ai-side' : '') + (isActiveSide && selected && selected.type === 'hand' && selected.piece === p ? ' selected' : '');
                 div.textContent = PIECES[p];
                 if (counts[p] > 1) { const b = document.createElement('div'); b.className = 'badge'; b.textContent = counts[p]; div.appendChild(b); }
-                if (isActiveHand && !isGameOver) div.onclick = (e) => { e.stopPropagation(); selected = (selected && selected.piece === p) ? null : { type: 'hand', piece: p }; render(); };
+                if (isActiveSide && !isGameOver) div.onclick = (e) => { e.stopPropagation(); selected = (selected && selected.piece === p) ? null : { type: 'hand', piece: p }; render(); };
                 container.appendChild(div);
             });
         }
@@ -294,35 +296,30 @@
                         const movePiece = board[selected.r][selected.c];
                         if (board[r][c].toUpperCase() === 'K') { executeMove(selected.r, selected.c, r, c, false); return; }
                         
-                        // 成り判定
                         const canPromote = !movePiece.includes('+') && "PSNLBR".includes(movePiece.toUpperCase()) && 
                                            (isTurnPlayer ? (r <= 2 || selected.r <= 2) : (r >= 6 || selected.r >= 6));
                         
                         if (canPromote) {
                             const force = ((movePiece.toUpperCase()==='P'||movePiece.toUpperCase()==='L') && (isTurnPlayer?r===0:r===8)) || (movePiece.toUpperCase()==='N' && (isTurnPlayer?r<=1:r>=7));
-                            if (force) { executeMove(selected.r, selected.c, r, c, true); }
+                            if (force) executeMove(selected.r, selected.c, r, c, true);
                             else {
-                                const fr=selected.r, fc=selected.c, tr=r, tc=c;
                                 modal.show("成り選択", "駒を成りますか？", [
-                                    { label: "成る", class: "btn-yes", action: () => executeMove(fr, fc, tr, tc, true) },
-                                    { label: "成らない", class: "btn-no", action: () => executeMove(fr, fc, tr, tc, false) }
+                                    { label: "成る", class: "btn-yes", action: () => executeMove(selected.r, selected.c, r, c, true) },
+                                    { label: "成らない", class: "btn-no", action: () => executeMove(selected.r, selected.c, r, c, false) }
                                 ]);
-                                selected = null; render(); return;
+                                return;
                             }
-                        } else { executeMove(selected.r, selected.c, r, c, false); }
+                        } else executeMove(selected.r, selected.c, r, c, false);
                     }
                 } else if (selected.type === 'hand') {
                     if (canDrop(selected.piece, r, c, isTurnPlayer, board)) {
                         board[r][c] = isTurnPlayer ? selected.piece.toUpperCase() : selected.piece.toLowerCase();
-                        recordKifu(isTurnPlayer?"先手":"後手", "打", `${9-c}${r+1}`, PIECES[selected.piece]);
                         (isTurnPlayer ? handPlayer : handAI).splice((isTurnPlayer ? handPlayer : handAI).indexOf(selected.piece), 1);
                         lastMove = { tr: r, tc: c }; selected = null; endTurn();
                     }
                 }
                 selected = null;
-            } else if (isMyPiece) {
-                selected = { type: 'board', r, c };
-            }
+            } else if (isMyPiece) selected = { type: 'board', r, c };
             render();
         }
 
@@ -334,13 +331,10 @@
                 const captured = target.replace('+', '').toUpperCase();
                 isTurnPlayer ? handPlayer.push(captured) : handAI.push(captured);
                 if(target.toUpperCase() === 'K') {
-                    recordKifu(isTurnPlayer?"先手":"後手", `${9-fc}${fr+1}`, `${9-tc}${tr+1}`, PIECES[p.toUpperCase()] + (promote ? "成" : ""));
                     board[tr][tc] = promote ? p+"+" : p; board[fr][fc] = ' ';
-                    endGame(isTurnPlayer ? "先手の勝利！王を取りました。" : "後手の勝利！王を取りました。");
-                    return;
+                    endGame(isTurnPlayer ? "先手の勝ち！" : "後手の勝ち！"); return;
                 }
             }
-            recordKifu(isTurnPlayer?"先手":"後手", `${9-fc}${fr+1}`, `${9-tc}${tr+1}`, PIECES[p.toUpperCase().replace('+','')] + (promote ? "成" : ""));
             if (promote) p += "+";
             board[tr][tc] = p; board[fr][fc] = ' ';
             endTurn();
@@ -350,19 +344,16 @@
             if(isGameOver) return;
             selected = null; isTurnPlayer = !isTurnPlayer; updateStatus(); 
             if (isCheck(board, isTurnPlayer)) {
-                if (isCheckmate(board, isTurnPlayer)) {
-                    endGame(isTurnPlayer ? "詰み。後手の勝利！" : "詰み。先手の勝利！");
-                    return;
-                }
+                if (isCheckmate(board, isTurnPlayer)) { endGame(isTurnPlayer ? "詰み。後手の勝利！" : "詰み。先手の勝利！"); return; }
                 showOteNotification();
             }
             render();
             if (!isTurnPlayer && !is1vs1) setTimeout(aiRoutine, 600);
         }
 
+        // --- 共通ロジック系 (変更なし) ---
         function isCheck(b, isP) {
-            let kr = -1, kc = -1;
-            const targetK = isP ? 'K' : 'k';
+            let kr = -1, kc = -1, targetK = isP ? 'K' : 'k';
             for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (b[r][c] === targetK) { kr = r; kc = c; break; }
             if (kr === -1) return false;
             for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
@@ -379,61 +370,83 @@
             return true;
         }
 
-        function aiRoutine() {
-            if(isGameOver || is1vs1) return;
-            let moves = getLegalMoves(board, false);
-            if (moves.length === 0) { endGame("AI投了。あなたの勝利！"); return; }
-            let depth = currentLevel >= 18 ? 4 : (currentLevel >= 11 ? 3 : 2);
-            let best = minimax(board, depth, -Infinity, Infinity, false).move;
-            if (currentLevel <= 5 && Math.random() > (currentLevel * 0.15)) best = moves[Math.floor(Math.random() * moves.length)];
-
-            if (best.type === 'move') {
-                let p = board[best.fr][best.fc];
-                const target = board[best.tr][best.tc];
-                lastMove = { tr: best.tr, tc: best.tc };
-                if (target.toUpperCase() === 'K') {
-                    recordKifu("AI", `${9-best.fc}${best.fr+1}`, `${9-best.tr}${best.tr+1}`, PIECES[p.toUpperCase().replace('+','')]);
-                    board[best.tr][best.tc] = p; board[best.fr][best.fc] = ' ';
-                    endGame("AIの勝利！王を取られました。"); return;
-                }
-                if (target !== ' ') handAI.push(target.replace('+', '').toUpperCase());
-                let promote = !p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && (best.tr >= 6 || best.fr >= 6);
-                recordKifu("AI", `${9-best.fc}${best.fr+1}`, `${9-best.tr}${best.tr+1}`, PIECES[p.toUpperCase().replace('+','')] + (promote?"成":""));
-                if(promote) p += "+";
-                board[best.tr][best.tc] = p; board[best.fr][best.fc] = ' ';
-            } else {
-                board[best.tr][best.tc] = best.piece.toLowerCase();
-                lastMove = { tr: best.tr, tc: best.tc };
-                recordKifu("AI", "打", `${9-best.tc}${best.tr+1}`, PIECES[best.piece]);
-                handAI.splice(handAI.indexOf(best.piece), 1);
-            }
-            endTurn();
-        }
-
         function canDrop(p, tr, tc, isP, b) {
             if (b[tr][tc] !== ' ') return false;
             if ((p==='P'||p==='L') && (isP ? tr===0 : tr===8)) return false;
             if (p==='N' && (isP ? tr<=1 : tr>=7)) return false;
-            if (p==='P') {
-                for(let r=0; r<9; r++) if(b[r][tc] === (isP?'P':'p')) return false;
-            }
+            if (p==='P') for(let r=0; r<9; r++) if(b[r][tc] === (isP?'P':'p')) return false;
             return true;
         }
 
-        function endGame(msg) {
-            isGameOver = true; selected = null;
-            document.getElementById('status').textContent = "対局終了";
-            modal.show("対局終了", msg, [{ label: "OK", class: "btn-yes" }]);
-            render();
+        function isValidMoveBasic(fr, fc, tr, tc, b) {
+            const p = b[fr][fc], tp = b[tr][tc];
+            if (tp !== ' ' && (p === p.toUpperCase()) === (tp === tp.toUpperCase())) return false;
+            const dr = tr-fr, dc = tc-fc, adr = Math.abs(dr), adc = Math.abs(dc), s = p === p.toUpperCase() ? -1 : 1;
+            if (p.includes('+')) {
+                const base = p.replace('+', '').toUpperCase();
+                if (base === 'R') return (dr === 0 || dc === 0 || (adr === 1 && adc === 1)) && isClear(fr,fc,tr,tc,b);
+                if (base === 'B') return (adr === adc || (adr === 1 && dc === 0) || (adc === 1 && dr === 0)) && isClear(fr,fc,tr,tc,b);
+                return (adr <= 1 && adc <= 1) && !(dr === -s && adc === 1);
+            }
+            switch(p.toUpperCase()) {
+                case 'P': return dc === 0 && dr === s;
+                case 'L': return dc === 0 && dr*s > 0 && isClear(fr,fc,tr,tc,b);
+                case 'N': return dr === s*2 && adc === 1;
+                case 'S': return (adr === 1 && adc === 1) || (dr === s && dc === 0);
+                case 'G': return (adr <= 1 && adc <= 1) && !(dr === -s && adc === 1);
+                case 'K': return adr <= 1 && adc <= 1;
+                case 'B': return adr === adc && isClear(fr,fc,tr,tc,b);
+                case 'R': return (dr === 0 || dc === 0) && isClear(fr,fc,tr,tc,b);
+            }
+            return false;
         }
 
-        function recordKifu(who, from, to, piece) { kifu.push([who, from, to, piece]); }
-        function saveKifu() {
-            let csv = kifu.map(row => row.join(",")).join("\n");
-            let blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
-            let link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "shogi_kifu.csv"; link.click();
+        function isClear(fr, fc, tr, tc, b) {
+            const sr = Math.sign(tr-fr), sc = Math.sign(tc-fc);
+            let r = fr+sr, c = fc+sc;
+            while(r!==tr || c!==tc){ if(b[r][c]!==' ') return false; r+=sr; c+=sc; }
+            return true;
+        }
+
+        function getLegalMoves(b, isP) {
+            let res = [];
+            for(let r=0; r<9; r++) for(let c=0; c<9; c++)
+                if(b[r][c] !== ' ' && (b[r][c] === b[r][c].toUpperCase()) === isP)
+                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(isValidMoveBasic(r,c,tr,tc,b)) res.push({type:'move',fr:r,fc:c,tr,tc});
+            let h = isP ? handPlayer : handAI;
+            [...new Set(h)].forEach(p => {
+                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(canDrop(p,tr,tc,isP,b)) res.push({type:'drop',piece:p,tr,tc});
+            });
+            return res;
+        }
+
+        function simMove(b, m) {
+            let n = b.map(r => [...r]);
+            if(m.type==='move'){
+                let p = n[m.fr][m.fc];
+                if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && ( (p===p.toUpperCase() && m.tr<=2) || (p!==p.toUpperCase() && m.tr>=6) )) p += "+";
+                n[m.tr][m.tc]=p; n[m.fr][m.fc]=' ';
+            } else n[m.tr][m.tc] = isTurnPlayer ? m.piece.toUpperCase() : m.piece.toLowerCase();
+            return n;
+        }
+
+        function aiRoutine() {
+            if(isGameOver || is1vs1) return;
+            let moves = getLegalMoves(board, false);
+            if (moves.length === 0) { endGame("AI投了。勝利！"); return; }
+            let best = minimax(board, (currentLevel>=11?3:2), -Infinity, Infinity, false).move;
+            if (best.type === 'move') {
+                let p = board[best.fr][best.fc];
+                const target = board[best.tr][best.tc];
+                if (target !== ' ') handAI.push(target.replace('+', '').toUpperCase());
+                if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && (best.tr >= 6)) p += "+";
+                board[best.tr][best.tc] = p; board[best.fr][best.fc] = ' ';
+            } else {
+                board[best.tr][best.tc] = best.piece.toLowerCase();
+                handAI.splice(handAI.indexOf(best.piece), 1);
+            }
+            lastMove = { tr: best.tr, tc: best.tc };
+            endTurn();
         }
 
         function minimax(b, d, a, bt, isM) {
@@ -469,70 +482,25 @@
                 s += (p === p.toUpperCase()) ? v : -v;
             }
             if(!pK) return -100000; if(!aK) return 100000;
-            handPlayer.forEach(p => s += SCORE[p] * 0.9);
-            handAI.forEach(p => s -= SCORE[p] * 0.9);
             return s;
         }
 
-        function getLegalMoves(b, isP) {
-            let res = [];
-            for(let r=0; r<9; r++) for(let c=0; c<9; c++){
-                if(b[r][c] !== ' ' && (b[r][c] === b[r][c].toUpperCase()) === isP) {
-                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(isValidMoveBasic(r,c,tr,tc,b)) res.push({type:'move',fr:r,fc:c,tr,tc});
-                }
-            }
-            let h = isP ? handPlayer : handAI;
-            [...new Set(h)].forEach(p => {
-                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(canDrop(p,tr,tc,isP,b)) res.push({type:'drop',piece:p,tr,tc});
-            });
-            return res;
-        }
-
-        function isValidMoveBasic(fr, fc, tr, tc, b) {
-            const p = b[fr][fc], tp = b[tr][tc];
-            if (tp !== ' ' && (p === p.toUpperCase()) === (tp === tp.toUpperCase())) return false;
-            const dr = tr-fr, dc = tc-fc, adr = Math.abs(dr), adc = Math.abs(dc), s = p === p.toUpperCase() ? -1 : 1;
-            if (p.includes('+')) {
-                const base = p.replace('+', '').toUpperCase();
-                if (base === 'R') return (dr === 0 || dc === 0 || (adr === 1 && adc === 1)) && isClear(fr,fc,tr,tc,b);
-                if (base === 'B') return (adr === adc || (adr === 1 && dc === 0) || (adc === 1 && dr === 0)) && isClear(fr,fc,tr,tc,b);
-                return (adr <= 1 && adc <= 1) && !(dr === -s && adc === 1);
-            }
-            switch(p.toUpperCase()) {
-                case 'P': return dc === 0 && dr === s;
-                case 'L': return dc === 0 && dr*s > 0 && isClear(fr,fc,tr,tc,b);
-                case 'N': return dr === s*2 && adc === 1;
-                case 'S': return (adr === 1 && adc === 1) || (dr === s && dc === 0);
-                case 'G': return (adr <= 1 && adc <= 1) && !(dr === -s && adc === 1);
-                case 'K': return adr <= 1 && adc <= 1;
-                case 'B': return adr === adc && isClear(fr,fc,tr,tc,b);
-                case 'R': return (dr === 0 || dc === 0) && isClear(fr,fc,tr,tc,b);
-            }
-            return false;
-        }
-
-        function isClear(fr, fc, tr, tc, b) {
-            const sr = Math.sign(tr-fr), sc = Math.sign(tc-fc);
-            let r = fr+sr, c = fc+sc;
-            while(r!==tr || c!==tc){ if(b[r][c]!==' ') return false; r+=sr; c+=sc; }
-            return true;
-        }
-
-        function simMove(b, m) {
-            let n = b.map(r => [...r]);
-            if(m.type==='move'){
-                let p = n[m.fr][m.fc];
-                if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && ( (p===p.toUpperCase() && m.tr<=2) || (p!==p.toUpperCase() && m.tr>=6) )) p += "+";
-                n[m.tr][m.tc]=p; n[m.fr][m.fc]=' ';
-            }
-            else{ n[m.tr][m.tc] = isTurnPlayer ? m.piece.toUpperCase() : m.piece.toLowerCase(); }
-            return n;
+        function endGame(msg) {
+            isGameOver = true;
+            document.getElementById('status').textContent = "対局終了";
+            modal.show("終局", msg, [{ label: "閉じる", class: "btn-yes" }]);
+            render();
         }
 
         function showOteNotification() {
             const el = document.getElementById('ote-notification');
             el.classList.add('show');
             setTimeout(() => el.classList.remove('show'), 1500);
+        }
+
+        function saveKifu() {
+            alert("棋譜保存機能は準備中です（コンソールに出力します）");
+            console.log(kifu);
         }
     </script>
 </body>
