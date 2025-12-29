@@ -47,7 +47,7 @@
             cursor: pointer; transition: transform 0.2s, background 0.2s; margin-top: 10px;
         }
 
-        .status-bar { font-size: 1.1rem; color: var(--accent); font-weight: bold; height: 40px; display: flex; align-items: center; transition: all 0.3s; }
+        .status-bar { font-size: 1.1rem; color: var(--accent); font-weight: bold; height: 40px; display: flex; align-items: center; transition: all 0.3s; white-space: nowrap; }
         #status-p2 { transform: rotate(180deg); }
         .active-turn { text-shadow: 0 0 10px var(--accent); color: white; scale: 1.1; }
 
@@ -106,11 +106,21 @@
         .switch::after { content: ""; position: absolute; width: 22px; height: 22px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: 0.3s; }
         input:checked + .switch { background: var(--accent); }
         input:checked + .switch::after { left: 26px; }
+
+        /* 王手通知の完全中央配置 */
+        #ote-notification {
+            position: fixed; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%);
+            pointer-events: none; z-index: 900; 
+            font-size: 5rem; font-weight: 900; color: #ffeb3b; 
+            text-shadow: 0 0 20px red; opacity: 0; transition: 0.3s;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
 
-    <div id="ote-notification" style="position:fixed; top:50%; pointer-events:none; z-index:900; font-size:5rem; font-weight:900; color:#ffeb3b; text-shadow:0 0 20px red; opacity:0; transition:0.3s;">王手！</div>
+    <div id="ote-notification">王手！</div>
 
     <div id="modal-overlay">
         <div class="modal-content">
@@ -254,7 +264,6 @@
                         const isPromotable = !movePiece.includes('+') && "PSNLBR".includes(movePiece.toUpperCase()) && (isTurnP1 ? r <= 2 || fr <= 2 : r >= 6 || fr >= 6);
                         const forcePromote = (movePiece.toUpperCase()==='P' || movePiece.toUpperCase()==='L') && (isTurnP1 ? r===0 : r===8) || (movePiece.toUpperCase()==='N' && (isTurnP1 ? r<=1 : r>=7));
                         
-                        // 移動処理に入る前に選択枠をクリア
                         const currentFr = fr, currentFc = fc, currentTr = r, currentTc = c;
                         selected = null; 
 
@@ -422,10 +431,14 @@
             const s1 = document.getElementById('status-p1'); const s2 = document.getElementById('status-p2');
             s1.className = 'status-bar' + (isTurnP1 ? ' active-turn' : '');
             s2.className = 'status-bar' + (!isTurnP1 ? ' active-turn' : '');
+            
             if(is1vs1) {
+                s2.style.transform = "rotate(180deg)";
                 s1.textContent = isTurnP1 ? "プレイヤー1 の手番" : "";
                 s2.textContent = !isTurnP1 ? "プレイヤー2 の手番" : "";
             } else {
+                // AIモード時は上側のステータスも自分に向け、AIの情報を表示
+                s2.style.transform = "rotate(0deg)";
                 s1.textContent = isTurnP1 ? "あなたの手番" : "";
                 s2.textContent = !isTurnP1 ? "AI 思考中..." : "";
             }
