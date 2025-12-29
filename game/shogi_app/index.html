@@ -74,7 +74,6 @@
         #board-container { background: var(--board-shadow); padding: 12px; border-radius: 4px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
         #board { display: grid; grid-template-columns: repeat(9, 62px); grid-template-rows: repeat(9, 64px); gap: 1px; background: #333; }
         .sq { width: 62px; height: 64px; background-color: var(--board-color); display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; }
-        .sq.invalid::after { content: ""; position: absolute; width: 100%; height: 100%; background: var(--invalid-sq); z-index: 5; }
 
         .piece {
             background: var(--piece-bg); color: var(--piece-text); display: flex; justify-content: center; align-items: center;
@@ -212,7 +211,7 @@
             document.getElementById('game-screen').classList.add('active');
             
             initGame();
-            modal.show("対局開始", is1vs1 ? "1vs1モード：交互に操作してください" : `対AI：${levels[currentLevel-1]}`, [
+            modal.show("対局開始", is1vs1 ? "1vs1モード：交互に操作してください" : `AI難易度：${levels[currentLevel-1]}`, [
                 { label: "開始", class: "btn-yes", action: () => { if(!isTurnP1 && !is1vs1) setTimeout(aiRoutine, 600); } }
             ]);
         }
@@ -297,7 +296,6 @@
             if (selected) {
                 if (selected.type === 'board') {
                     if (isValidMoveBasic(selected.r, selected.c, r, c, board)) {
-                        // 自殺手チェック
                         const tempMove = { type: 'move', fr: selected.r, fc: selected.c, tr: r, tc: c };
                         if (isCheck(simMove(board, tempMove), isTurnP1)) {
                             selected = null; render(); return;
@@ -432,7 +430,6 @@
             [...new Set(h)].forEach(p => {
                 for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) if(canDrop(p,tr,tc,isP,b)) rawMoves.push({type:'drop',piece:p,tr,tc});
             });
-            // 自殺手（指した後に自分の王が取られる状態）を除去
             return rawMoves.filter(m => !isCheck(simMove(b, m), isP));
         }
 
@@ -441,7 +438,6 @@
             if(m.type==='move'){
                 let p = n[m.fr][m.fc];
                 if (!p.includes('+') && "PSNLBR".includes(p.toUpperCase()) && ( (p===p.toUpperCase() && m.tr<=2) || (p!==p.toUpperCase() && m.tr>=6) )) {
-                    // 自動成り判定（AIやシミュレーション用。プレイヤーは選択ダイアログがあるため別処理）
                     const force = ((p.toUpperCase()==='P'||p.toUpperCase()==='L') && (p===p.toUpperCase()?m.tr===0:m.tr===8)) || (p.toUpperCase()==='N' && (p===p.toUpperCase()?m.tr<=1:m.tr>=7));
                     if(force) p += "+";
                 }
@@ -455,7 +451,6 @@
             let moves = getLegalMoves(board, false);
             if (moves.length === 0) { endGame("AIが投了しました"); return; }
             
-            // 王を取れる手があれば即実行
             let winMove = moves.find(m => board[m.tr][m.tc].toUpperCase() === 'K');
             let best;
             if (winMove) best = winMove;
@@ -523,7 +518,23 @@
             setTimeout(() => el.classList.remove('show'), 1500);
         }
 
-        function saveKifu() { alert("棋譜を保存しました（デバッグ用）"); }
+        function saveKifu() {
+            let text = "【局面データ】\n";
+            text += "手番: " + (isTurnP1 ? "プレイヤー1" : "プレイヤー2/AI") + "\n";
+            text += "--- 盤面 ---\n";
+            for (let r = 0; r < 9; r++) {
+                text += board[r].map(p => p === ' ' ? '・' : p).join(' ') + "\n";
+            }
+            text += "--- 持ち駒 ---\n";
+            text += "P1: " + (handP1.length > 0 ? handP1.join(',') : "なし") + "\n";
+            text += "P2: " + (handP2.length > 0 ? handP2.join(',') : "なし") + "\n";
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert("現在の局面データをクリップボードにコピーしました。");
+            }).catch(err => {
+                alert("コピーに失敗しました: " + err);
+            });
+        }
     </script>
 </body>
 </html>
