@@ -81,7 +81,6 @@
         /* マス目強調 */
         .sq.selected::after { content: ""; position: absolute; inset: 2px; border: 3px solid #ffeb3b; border-radius: 4px; z-index: 3; }
         .sq.last-move::after { content: ""; position: absolute; inset: 0; background: rgba(255, 87, 34, 0.3); z-index: 1; }
-        .sq.movable::before { content: ""; position: absolute; width: 12px; height: 12px; background: rgba(0,0,0,0.1); border-radius: 50%; z-index: 1; }
 
         /* 持ち駒 */
         .hand-box {
@@ -219,17 +218,7 @@
         }
 
         function initGame() {
-            board = [
-                ['l','n','s','g','k','g','s','n','l'],
-                [' ','r',' ',' ',' ',' ',' ','b',' '],
-                ['p','p','p','p','p','p','p','p','p'],
-                [' ',' ',' ',' ',' ',' ',' ',' ',' '],
-                [' ',' ',' ',' ',' ',' ',' ',' ',' '],
-                [' ',' ',' ',' ',' ',' ',' ',' ',' '],
-                ['P','P','P','P','P','P','P','P','P'],
-                [' ','B',' ',' ',' ',' ',' ','R',' '],
-                ['L','N','S','G','K','G','S','N','L']
-            ];
+            board = [['l','n','s','g','k','g','s','n','l'],[' ','r',' ',' ',' ',' ',' ','b',' '],['p','p','p','p','p','p','p','p','p'],[' ',' ',' ',' ',' ',' ',' ',' ',' '],[' ',' ',' ',' ',' ',' ',' ',' ',' '],[' ',' ',' ',' ',' ',' ',' ',' ',' '],['P','P','P','P','P','P','P','P','P'],[' ','B',' ',' ',' ',' ',' ','R',' '],['L','N','S','G','K','G','S','N','L']];
             handP1 = []; handP2 = []; kifu = []; isGameOver = false; lastMove = null;
         }
 
@@ -241,7 +230,6 @@
                     sq.className = 'sq';
                     if(selected?.r === r && selected?.c === c) sq.classList.add('selected');
                     if(lastMove?.tr === r && lastMove?.tc === c) sq.classList.add('last-move');
-                    
                     const p = board[r][c];
                     if(p !== ' ') {
                         const pEl = document.createElement('div');
@@ -275,16 +263,12 @@
         function handleSquareClick(r, c) {
             if(isGameOver || (!isTurnP1 && !is1vs1)) return;
             const p = board[r][c];
-
             if(selected) {
                 if(selected.type === 'board') {
                     if(canMove(selected.r, selected.c, r, c, board)) {
                         const movePiece = board[selected.r][selected.c];
                         const isPromotable = !movePiece.includes('+') && "PSNLBR".includes(movePiece.toUpperCase()) && (isTurnP1 ? r <= 2 || selected.r <= 2 : r >= 6 || selected.r >= 6);
-                        
-                        // 強制成りの確認（歩、香、桂）
                         const forcePromote = (movePiece.toUpperCase()==='P' || movePiece.toUpperCase()==='L') && (isTurnP1 ? r===0 : r===8) || (movePiece.toUpperCase()==='N' && (isTurnP1 ? r<=1 : r>=7));
-
                         if(forcePromote) {
                             executeMove(selected.r, selected.c, r, c, true);
                         } else if(isPromotable) {
@@ -306,8 +290,7 @@
                 }
                 selected = null; render();
             } else if(p !== ' ' && (isTurnP1 ? p === p.toUpperCase() : p === p.toLowerCase())) {
-                selected = {type:'board', r, c};
-                render();
+                selected = {type:'board', r, c}; render();
             }
         }
 
@@ -325,16 +308,11 @@
         }
 
         function endTurn(tr, tc) {
-            lastMove = {tr, tc};
-            isTurnP1 = !isTurnP1;
-            render();
-            updateStatus();
-
+            lastMove = {tr, tc}; isTurnP1 = !isTurnP1; render(); updateStatus();
             if(isCheck(board, isTurnP1)) {
                 if(getLegalMoves(board, isTurnP1).length === 0) {
                     const winner = !isTurnP1 ? "プレイヤー1" : (is1vs1 ? "プレイヤー2" : "AI");
-                    finishGame(`${winner} の勝利！`);
-                    return;
+                    finishGame(`${winner} の勝利！`); return;
                 }
                 flashOte();
             }
@@ -344,14 +322,12 @@
         function canMove(fr, fc, tr, tc, b) {
             const p = b[fr][fc]; const target = b[tr][tc];
             if(target !== ' ' && (p === p.toUpperCase()) === (target === target.toUpperCase())) return false;
-            
             const dr = tr-fr, dc = tc-fc, adr = Math.abs(dr), adc = Math.abs(dc), s = p === p.toUpperCase() ? -1 : 1;
-
             if(p.includes('+')) {
                 const base = p.replace('+', '').toUpperCase();
                 if(base === 'R') return (dr===0 || dc===0 || (adr===1 && adc===1)) && isPathClear(fr,fc,tr,tc,b);
                 if(base === 'B') return (adr===adc || (adr===1 && dc===0) || (adc===1 && dr===0)) && isPathClear(fr,fc,tr,tc,b);
-                return adr<=1 && adc<=1 && !(dr===-s && adc===1); // 金と同じ
+                return adr<=1 && adc<=1 && !(dr===-s && adc===1);
             }
             switch(p.toUpperCase()) {
                 case 'P': return dc===0 && dr===s;
@@ -377,10 +353,7 @@
             if(b[tr][tc] !== ' ') return false;
             if((p==='P'||p==='L') && (isP1?tr===0:tr===8)) return false;
             if(p==='N' && (isP1?tr<=1:tr>=7)) return false;
-            if(p==='P') {
-                for(let r=0; r<9; r++) if(b[r][tc] === (isP1?'P':'p')) return false; // 二歩
-                // 打ち歩詰めチェックは簡易化のため省略
-            }
+            if(p==='P') for(let r=0; r<9; r++) if(b[r][tc] === (isP1?'P':'p')) return false;
             return true;
         }
 
@@ -390,37 +363,29 @@
             if(kr === undefined) return false;
             for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
                 const p = b[r][c];
-                if(p !== ' ' && (p === p.toUpperCase()) !== isP1) {
-                    if(canMove(r, c, kr, kc, b)) return true;
-                }
+                if(p !== ' ' && (p === p.toUpperCase()) !== isP1) if(canMove(r, c, kr, kc, b)) return true;
             }
             return false;
         }
 
         function getLegalMoves(b, isP1) {
             let moves = [];
-            for(let r=0; r<9; r++) {
-                for(let c=0; c<9; c++) {
-                    if(b[r][c] !== ' ' && (b[r][c] === b[r][c].toUpperCase()) === isP1) {
-                        for(let tr=0; tr<9; tr++) {
-                            for(let tc=0; tc<9; tc++) {
-                                if(canMove(r, c, tr, tc, b)) {
-                                    let nb = b.map(row => [...row]); nb[tr][tc] = nb[r][c]; nb[r][c] = ' ';
-                                    if(!isCheck(nb, isP1)) moves.push({type:'move', fr:r, fc:c, tr, tc});
-                                }
-                            }
+            for(let r=0; r<9; r++) for(let c=0; c<9; c++) {
+                if(b[r][c] !== ' ' && (b[r][c] === b[r][c].toUpperCase()) === isP1) {
+                    for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) {
+                        if(canMove(r, c, tr, tc, b)) {
+                            let nb = b.map(row => [...row]); nb[tr][tc] = nb[r][c]; nb[r][c] = ' ';
+                            if(!isCheck(nb, isP1)) moves.push({type:'move', fr:r, fc:c, tr, tc});
                         }
                     }
                 }
             }
             const h = isP1 ? handP1 : handP2;
             [...new Set(h)].forEach(p => {
-                for(let tr=0; tr<9; tr++) {
-                    for(let tc=0; tc<9; tc++) {
-                        if(canDrop(p, tr, tc, isP1, b)) {
-                            let nb = b.map(row => [...row]); nb[tr][tc] = isP1 ? p : p.toLowerCase();
-                            if(!isCheck(nb, isP1)) moves.push({type:'drop', piece:p, tr, tc});
-                        }
+                for(let tr=0; tr<9; tr++) for(let tc=0; tc<9; tc++) {
+                    if(canDrop(p, tr, tc, isP1, b)) {
+                        let nb = b.map(row => [...row]); nb[tr][tc] = isP1 ? p : p.toLowerCase();
+                        if(!isCheck(nb, isP1)) moves.push({type:'drop', piece:p, tr, tc});
                     }
                 }
             });
@@ -431,31 +396,20 @@
             if(isGameOver) return;
             const moves = getLegalMoves(board, false);
             if(moves.length === 0) { finishGame("プレイヤー1 の勝利！"); return; }
-            
-            let bestMove = null;
-            let maxScore = -Infinity;
-
-            // 十段AI: 簡易的な評価関数
+            let bestMove = null; let maxScore = -Infinity;
             moves.forEach(m => {
                 let s = Math.random() * 10;
                 if(m.type === 'move') {
                     const target = board[m.tr][m.tc];
                     if(target !== ' ') s += SCORES[target.toUpperCase()];
-                    if(m.tr >= 6) s += 30; // 敵陣侵入
-                } else {
-                    if(m.tr >= 6) s += 20;
-                }
-                
-                // シミュレーション
+                    if(m.tr >= 6) s += 30;
+                } else if(m.tr >= 6) s += 20;
                 let nb = board.map(row => [...row]);
                 if(m.type === 'move') { nb[m.tr][m.tc] = nb[m.fr][m.fc]; nb[m.fr][m.fc] = ' '; }
                 else { nb[m.tr][m.tc] = m.piece.toLowerCase(); }
-                
-                if(isCheck(nb, true)) s += 50; // 王手をかける
-
+                if(isCheck(nb, true)) s += 50;
                 if(s > maxScore) { maxScore = s; bestMove = m; }
             });
-
             if(bestMove.type === 'move') {
                 const p = board[bestMove.fr][bestMove.fc];
                 const force = (p === 'p' || p === 'l') && bestMove.tr === 8 || (p === 'n' && bestMove.tr >= 7);
@@ -470,11 +424,9 @@
         }
 
         function updateStatus() {
-            const s1 = document.getElementById('status-p1');
-            const s2 = document.getElementById('status-p2');
+            const s1 = document.getElementById('status-p1'); const s2 = document.getElementById('status-p2');
             s1.className = 'status-bar' + (isTurnP1 ? ' active-turn' : '');
             s2.className = 'status-bar' + (!isTurnP1 ? ' active-turn' : '');
-            
             if(is1vs1) {
                 s1.textContent = isTurnP1 ? "プレイヤー1 の手番" : "";
                 s2.textContent = !isTurnP1 ? "プレイヤー2 の手番" : "";
@@ -488,12 +440,16 @@
             const over = document.getElementById('modal-overlay');
             document.getElementById('modal-title').textContent = title;
             document.getElementById('modal-body').textContent = body;
-            const container = document.getElementById('modal-btns'); container.innerHTML = '';
+            const container = document.getElementById('modal-btns'); 
+            container.innerHTML = '';
             btns.forEach(b => {
                 const btn = document.createElement('button');
                 btn.className = `modal-btn ${b.class}`;
                 btn.textContent = b.label;
-                btn.onclick = () => { b.action(); over.style.display = 'none'; };
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    b.action(); over.style.display = 'none';
+                }, { once: true });
                 container.appendChild(btn);
             });
             over.style.display = 'flex';
@@ -501,8 +457,7 @@
 
         function flashOte() {
             const el = document.getElementById('ote-notification');
-            el.style.opacity = 1;
-            setTimeout(() => el.style.opacity = 0, 1000);
+            el.style.opacity = 1; setTimeout(() => el.style.opacity = 0, 1000);
         }
 
         function finishGame(msg) {
@@ -512,8 +467,7 @@
 
         function downloadKifu() {
             const blob = new Blob(["\ufeff" + kifu.join('\n')], {type:'text/plain'});
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
             a.download = 'shogi_kifu.txt'; a.click();
         }
     </script>
